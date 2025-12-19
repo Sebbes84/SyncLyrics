@@ -7,15 +7,16 @@ from typing import Optional
 import syncedlyrics
 
 import aiohttp
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 import uvicorn
+
+print("[DEBUG] main.py: Script started", flush=True)
 
 # Configuration
 OPTIONS_PATH = "/data/options.json"
 CACHE_DIR = "/data/lyrics"
-
-print("[DEBUG] main.py: Script started", flush=True)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -189,16 +190,34 @@ async def monitor_ha_state():
 async def startup_event():
     asyncio.create_task(monitor_ha_state())
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "SyncLyrics is running"}
+
 @app.websocket("/ws")
+@app.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
+    print(f"[DEBUG] main.py: WebSocket connection attempt from {websocket.client}", flush=True)
     await manager.connect(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        print("[DEBUG] main.py: WebSocket disconnected", flush=True)
+        manager.disconnect(websocket)
+    except Exception as e:
+        print(f"[DEBUG] main.py: WebSocket error: {e}", flush=True)
         manager.disconnect(websocket)
 
-# Serve static frontend
+@app.api_route("/{path_name:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+async def catch_all(request: Request, path_name: str):
+    print(f"[DEBUG] main.py: Catch-all route hit: {request.method} /{path_name}", flush=True)
+    return JSONResponse(
+        status_code=404,
+        content={"error": "Not Found", "requested_path": path_name, "method": request.method}
+    )
+
+# Serve static frontend (last)
 app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
