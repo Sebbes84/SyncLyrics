@@ -15,7 +15,7 @@ import uvicorn
 
 # Configuration
 OPTIONS_PATH = "/data/options.json"
-CACHE_DIR = "/data/lyrics"
+CACHE_DIR = "/share/lyrics"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
