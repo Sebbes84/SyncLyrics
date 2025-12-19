@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncLyrics</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="background-layer"></div>
+    
+    <div id="app">
+        <header id="header">
+            <h1 id="song-title">Song Title</h1>
+            <h2 id="song-artist">Artist Name</h2>
+        </header>
+
+        <main id="lyrics-container">
+            <!-- Lyrics will be injected here -->
+            <div class="lyric-line">Waiting for music...</div>
+        </main>
+
+        <footer id="footer">
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+        </footer>
+
+        <div id="offset-control">
+            <button class="offset-btn" onclick="adjustOffset(0.1)">+</button>
+            <span id="offset-val" style="font-size: 0.8rem; text-align: center;">0s</span>
+            <button class="offset-btn" onclick="adjustOffset(-0.1)">-</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

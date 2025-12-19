@@ -1,0 +1,164 @@
+let ws;
+let currentLyrics = [];
+let currentPosition = 0;
+let duration = 0;
+let isPlaying = false;
+let startTime = 0;
+let lastUpdate = 0;
+let offset = 0; // Manual offset in seconds
+let autoOffset = 0.5; // Default compensation for network lag
+let gameMode = false;
+
+function connectWS() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+    ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'update') {
+            updateSong(msg.data, msg.options);
+        } else if (msg.type === 'sync') {
+            syncPosition(msg.data);
+        }
+    };
+
+    ws.onclose = () => setTimeout(connectWS, 2000);
+}
+
+function updateSong(data, options) {
+    document.getElementById('song-title').innerText = data.title || "Unknown";
+    document.getElementById('song-artist').innerText = data.artist || "Unknown";
+
+    duration = data.duration || 0;
+    gameMode = options.game_mode_enabled;
+
+    // Background
+    const bg = document.getElementById('background-layer');
+    if (options.show_background && data.image) {
+        bg.style.backgroundImage = `url(${data.image})`;
+        bg.classList.add('visible');
+    } else {
+        bg.classList.remove('visible');
+    }
+
+    // Header/Footer visibility
+    document.getElementById('header').classList.toggle('visible', options.show_header);
+    document.getElementById('footer').classList.toggle('visible', options.show_progress_bar);
+
+    // Parse Lyrics
+    parseLRC(data.lyrics);
+    syncPosition({ position: data.position, state: data.state });
+}
+
+function parseLRC(lrcText) {
+    if (!lrcText) {
+        currentLyrics = [{ time: 0, text: "Lyrics not found" }];
+        renderLyrics();
+        return;
+    }
+
+    const lines = lrcText.split('\n');
+    const timeRegex = /\[(\d+):(\d+)\.(\d+)\]/;
+    currentLyrics = [];
+
+    lines.forEach(line => {
+        const match = timeRegex.exec(line);
+        if (match) {
+            const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 100;
+            let text = line.replace(timeRegex, '').trim();
+
+            if (gameMode && text.length > 10 && Math.random() > 0.7) {
+                text = maskWords(text);
+            }
+
+            currentLyrics.push({ time, text, isMasked: text.includes('<span class="masked">') });
+        }
+    });
+
+    // Fallback for plain text (if no timestamps found but we have content)
+    if (currentLyrics.length === 0 && lines.some(l => l.trim().length > 0)) {
+        currentLyrics = lines
+            .filter(l => l.trim().length > 0)
+            .map((text, i) => ({
+                time: -1, // No sync
+                text: gameMode && text.length > 10 && Math.random() > 0.7 ? maskWords(text) : text
+            }));
+    }
+
+    renderLyrics();
+}
+
+function maskWords(text) {
+    const words = text.split(' ');
+    const count = Math.max(1, Math.floor(words.length / 3));
+    for (let i = 0; i < count; i++) {
+        const idx = Math.floor(Math.random() * words.length);
+        if (words[idx].length > 2) {
+            words[idx] = `<span class="masked">${words[idx]}</span>`;
+        }
+    }
+    return words.join(' ');
+}
+
+function renderLyrics() {
+    const container = document.getElementById('lyrics-container');
+    container.innerHTML = currentLyrics.map((line, i) => `
+        <div class="lyric-line" id="line-${i}">${line.text}</div>
+    `).join('');
+}
+
+function syncPosition(data) {
+    currentPosition = data.position || 0;
+    isPlaying = data.state === 'playing';
+    lastUpdate = Date.now();
+}
+
+function adjustOffset(val) {
+    offset += val;
+    document.getElementById('offset-val').innerText = offset.toFixed(1) + 's';
+}
+
+function updateUI() {
+    if (!isPlaying) {
+        requestAnimationFrame(updateUI);
+        return;
+    }
+
+    const now = Date.now();
+    const elapsed = (now - lastUpdate) / 1000;
+    const actualPos = currentPosition + elapsed + offset + autoOffset;
+
+    // Update Progress Bar
+    if (duration > 0) {
+        const progress = (actualPos / duration) * 100;
+        document.getElementById('progress-bar').style.width = Math.min(100, progress) + '%';
+    }
+
+    // Highlight current lyric
+    let activeIndex = -1;
+    for (let i = 0; i < currentLyrics.length; i++) {
+        if (actualPos >= currentLyrics[i].time) {
+            activeIndex = i;
+        } else {
+            break;
+        }
+    }
+
+    if (activeIndex !== -1) {
+        document.querySelectorAll('.lyric-line').forEach((el, i) => {
+            el.classList.toggle('active', i === activeIndex);
+            el.classList.toggle('past', i < activeIndex);
+
+            if (i === activeIndex && !el.dataset.scrolled) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // We don't use dataset.scrolled to allow continuous center alignment, 
+                // but browser does it smoothly anyway.
+            }
+        });
+    }
+
+    requestAnimationFrame(updateUI);
+}
+
+connectWS();
+updateUI();

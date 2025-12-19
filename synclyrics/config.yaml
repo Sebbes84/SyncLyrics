@@ -1,0 +1,37 @@
+name: "SyncLyrics"
+version: "1.0.0"
+slug: "synclyrics"
+description: "Fetch, store, and display synced lyrics for your Spotify player."
+url: "https://github.com/Sebbes84/SyncLyrics"
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+init: false
+ports:
+  8080/tcp: 8080
+panel_icon: mdi:music-note-bluetooth
+panel_title: SyncLyrics
+ingress: true
+options:
+  spotify_entity: "media_player.spotify_user"
+  cache_size_mb: 100
+  show_header: true
+  show_progress_bar: true
+  show_background: true
+  game_mode_enabled: false
+  lyric_providers: ["lrclib", "musixmatch", "genius"]
+  musixmatch_token: ""
+  genius_token: ""
+schema:
+  spotify_entity: str
+  cache_size_mb: int
+  show_header: bool
+  show_progress_bar: bool
+  show_background: bool
+  game_mode_enabled: bool
+  lyric_providers: list(str)
+  musixmatch_token: str?
+  genius_token: str?
