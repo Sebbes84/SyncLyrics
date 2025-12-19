@@ -147,10 +147,13 @@ async def monitor_ha_state():
                             current_song["lyrics"] = lyrics
                             last_song = current_song
                             await manager.broadcast(json.dumps({"type": "update", "data": current_song, "options": current_options}))
-                        elif current_song["state"] == "playing":
+                            # Just broadcast the current status (sync) if song is the same
                             await manager.broadcast(json.dumps({
                                 "type": "sync",
-                                "data": {"position": current_song["position"], "state": current_song["state"]}
+                                "data": {
+                                    "position": current_song["position"],
+                                    "state": current_song["state"]
+                                }
                             }))
                     else:
                         logger.error(f"HA API Error {resp.status} for {entity_id}")
