@@ -32,8 +32,9 @@
 
 Pour afficher les paroles dans votre interface Lovelace :
 1. Ajoutez une carte **Page Web** (Webpage).
-2. URL : `http://VOTRE_IP_HA:8080` (Assurez-vous que le port 8080 est ouvert dans la configuration).
+2. URL : `http://VOTRE_IP_HA:8099` (Assurez-vous que le port 8080 est ouvert dans la configuration).
 
 ## 📄 Licence
 
 Ce projet est sous licence MIT.
+
