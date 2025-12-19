@@ -24,6 +24,18 @@ logger = logging.getLogger("SyncLyrics")
 
 app = FastAPI()
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[DEBUG] main.py: Incoming {request.method} {request.url.path}", flush=True)
+    # Log headers for WebSocket handshake or suspicious 404s
+    if "upgrade" in request.headers.get("connection", "").lower() or "websocket" in request.headers.get("upgrade", "").lower():
+        print(f"[DEBUG] main.py: WebSocket handshake detected in headers", flush=True)
+    
+    response = await call_next(request)
+    if response.status_code == 404:
+        print(f"[DEBUG] main.py: 404 Path: {request.url.path}", flush=True)
+    return response
+
 # Configuration (In a HA addon, these are in /data/options.json)
 OPTIONS_PATH = "/data/options.json"
 CACHE_DIR = "/data/lyrics"
@@ -137,6 +149,7 @@ async def monitor_ha_state():
                 async with session.get(url, headers=headers) as resp:
                     if resp.status == 200:
                         state = await resp.json()
+                        print(f"[DEBUG] main.py: Successfully fetched state for {entity_id}", flush=True)
                         attr = state.get("attributes", {})
                         
                         current_song = {
