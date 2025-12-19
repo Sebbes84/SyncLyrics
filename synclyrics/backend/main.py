@@ -26,6 +26,12 @@ app = FastAPI()
 if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
 
+# Global state to store the latest song for new connections
+current_state = {
+    "song": None,
+    "options": None
+}
+
 def get_options():
     if os.path.exists(OPTIONS_PATH):
         with open(OPTIONS_PATH, 'r') as f:
@@ -53,6 +59,13 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        # Send initial state if available
+        if current_state["song"]:
+            await websocket.send_text(json.dumps({
+                "type": "update",
+                "data": current_state["song"],
+                "options": current_state["options"]
+            }))
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
@@ -104,7 +117,6 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
 def parse_ha_time(time_str):
     """Parse HA ISO time string to unix timestamp."""
     try:
-        # 2024-03-21T15:30:00.123456+00:00 or similar
         dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
         return dt.timestamp()
     except Exception:
@@ -151,7 +163,7 @@ async def monitor_ha_state():
                             logger.info(f"Song changed: {title} by {artist}")
                             lyrics = await fetch_lyrics(artist, title, int(attr.get("media_duration", 0)))
                             
-                            current_song = {
+                            song_info = {
                                 "title": title,
                                 "artist": artist,
                                 "album": attr.get("media_album_name"),
@@ -161,20 +173,29 @@ async def monitor_ha_state():
                                 "state": state,
                                 "lyrics": lyrics
                             }
+                            
+                            # Update global state for new connections
+                            current_state["song"] = song_info
+                            current_state["options"] = current_options
+                            
                             last_song_key = song_key
                             last_broadcast_pos = current_pos
                             last_broadcast_state = state
-                            await manager.broadcast(json.dumps({"type": "update", "data": current_song, "options": current_options}))
+                            await manager.broadcast(json.dumps({"type": "update", "data": song_info, "options": current_options}))
                         else:
                             # Song is the same, check for seek or state change
-                            # We broadcast if state changed OR if position jumped more than 2 seconds from expected
-                            time_passed = 1.0 # Polling interval
+                            time_passed = 1.0 
                             expected_pos = last_broadcast_pos + time_passed if last_broadcast_state == "playing" else last_broadcast_pos
                             
                             is_seeking = abs((current_pos or 0) - (expected_pos or 0)) > 2.0
                             is_state_change = state != last_broadcast_state
                             
                             if is_seeking or is_state_change:
+                                # Update position in stored state too
+                                if current_state["song"]:
+                                    current_state["song"]["position"] = current_pos
+                                    current_state["song"]["state"] = state
+                                
                                 last_broadcast_pos = current_pos
                                 last_broadcast_state = state
                                 await manager.broadcast(json.dumps({
@@ -186,7 +207,7 @@ async def monitor_ha_state():
         except Exception as e:
             logger.error(f"Error: {e}")
         
-        await asyncio.sleep(1) # Faster polling for better seek detection
+        await asyncio.sleep(1)
 
 @app.on_event("startup")
 async def startup_event():
