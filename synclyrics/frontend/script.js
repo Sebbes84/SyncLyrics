@@ -11,11 +11,10 @@ let gameMode = false;
 
 function connectWS() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use relative path to handle Ingress subpaths automatically
-    const path = window.location.pathname.endsWith('/') ? 'ws' : './ws';
-    ws = new WebSocket(`${protocol}//${window.location.host}${window.location.pathname.replace(/\/$/, '')}/ws`);
+    const baseUrl = window.location.pathname.replace(/\/$/, '');
+    const wsUrl = `${protocol}//${window.location.host}${baseUrl}/ws`;
 
-    console.log("Connecting to WebSocket:", ws.url);
+    ws = new WebSocket(wsUrl);
 
     ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
@@ -79,12 +78,11 @@ function parseLRC(lrcText) {
         }
     });
 
-    // Fallback for plain text (if no timestamps found but we have content)
     if (currentLyrics.length === 0 && lines.some(l => l.trim().length > 0)) {
         currentLyrics = lines
             .filter(l => l.trim().length > 0)
             .map((text, i) => ({
-                time: -1, // No sync
+                time: -1,
                 text: gameMode && text.length > 10 && Math.random() > 0.7 ? maskWords(text) : text
             }));
     }
@@ -132,13 +130,11 @@ function updateUI() {
     const elapsed = (now - lastUpdate) / 1000;
     const actualPos = currentPosition + elapsed + offset + autoOffset;
 
-    // Update Progress Bar
     if (duration > 0) {
         const progress = (actualPos / duration) * 100;
         document.getElementById('progress-bar').style.width = Math.min(100, progress) + '%';
     }
 
-    // Highlight current lyric
     let activeIndex = -1;
     for (let i = 0; i < currentLyrics.length; i++) {
         if (actualPos >= currentLyrics[i].time) {
@@ -152,11 +148,8 @@ function updateUI() {
         document.querySelectorAll('.lyric-line').forEach((el, i) => {
             el.classList.toggle('active', i === activeIndex);
             el.classList.toggle('past', i < activeIndex);
-
             if (i === activeIndex && !el.dataset.scrolled) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // We don't use dataset.scrolled to allow continuous center alignment, 
-                // but browser does it smoothly anyway.
             }
         });
     }
