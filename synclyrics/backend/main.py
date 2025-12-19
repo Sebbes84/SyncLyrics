@@ -3,6 +3,8 @@ import json
 import os
 import logging
 import traceback
+import time
+from datetime import datetime
 from typing import Optional
 import syncedlyrics
 
@@ -77,11 +79,7 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
         with open(cache_path, 'r', encoding='utf-8') as f:
             return f.read()
 
-    # Use current options
     current_options = get_options()
-    
-    # We'll try with default providers first to be robust against config issues
-    logger.info(f"Searching lyrics for {artist} - {title}")
     
     def search():
         try:
@@ -89,9 +87,6 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
             gn_token = current_options.get("genius_token")
             if mx_token: os.environ["MUSIXMATCH_TOKEN"] = mx_token
             if gn_token: os.environ["GENIUS_ACCESS_TOKEN"] = gn_token
-            
-            # Use default providers by not passing the argument, or pass them carefully
-            # The error "Providers str not found" suggests a type issue.
             return syncedlyrics.search(f"{artist} - {title}")
         except Exception as e:
             logger.error(f"Error in syncedlyrics search: {e}")
@@ -106,61 +101,92 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
         return lyrics
     return None
 
+def parse_ha_time(time_str):
+    """Parse HA ISO time string to unix timestamp."""
+    try:
+        # 2024-03-21T15:30:00.123456+00:00 or similar
+        dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+        return dt.timestamp()
+    except Exception:
+        return time.time()
+
 async def monitor_ha_state():
-    """Monitor Home Assistant player state."""
-    last_song = None
+    """Monitor Home Assistant player state with drift compensation."""
+    last_song_key = None
+    last_broadcast_pos = -1
+    last_broadcast_state = None
+    
     while True:
         try:
             current_options = get_options()
             entity_id = current_options.get("spotify_entity")
             if not HA_TOKEN:
-                logger.error("SUPERVISOR_TOKEN missing!")
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
                 continue
 
-            headers = {"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"}
             async with aiohttp.ClientSession() as session:
                 url = f"{HA_URL}/states/{entity_id}"
-                async with session.get(url, headers=headers) as resp:
+                async with session.get(url, headers={"Authorization": f"Bearer {HA_TOKEN}"}) as resp:
                     if resp.status == 200:
-                        state = await resp.json()
-                        attr = state.get("attributes", {})
-                        current_song = {
-                            "title": attr.get("media_title"),
-                            "artist": attr.get("media_artist"),
-                            "album": attr.get("media_album_name"),
-                            "image": attr.get("entity_picture"),
-                            "position": attr.get("media_position"),
-                            "duration": attr.get("media_duration"),
-                            "state": state.get("state")
-                        }
+                        state_data = await resp.json()
+                        attr = state_data.get("attributes", {})
+                        
+                        title = attr.get("media_title")
+                        artist = attr.get("media_artist")
+                        state = state_data.get("state")
+                        raw_pos = attr.get("media_position")
+                        updated_at = attr.get("media_position_updated_at")
+                        
+                        # Compensate for drift
+                        current_pos = raw_pos
+                        if state == "playing" and raw_pos is not None and updated_at:
+                            diff = time.time() - parse_ha_time(updated_at)
+                            current_pos = raw_pos + diff
 
-                        if not current_song["title"]:
+                        song_key = f"{artist}_{title}"
+                        
+                        if not title:
                             pass
-                        elif current_song["title"] != (last_song["title"] if last_song else None):
-                            logger.info(f"Song changed: {current_song['title']} by {current_song['artist']}")
-                            lyrics = await fetch_lyrics(
-                                current_song["artist"], 
-                                current_song["title"], 
-                                int(current_song["duration"]) if current_song["duration"] else 0
-                            )
-                            current_song["lyrics"] = lyrics
-                            last_song = current_song
+                        elif song_key != last_song_key:
+                            logger.info(f"Song changed: {title} by {artist}")
+                            lyrics = await fetch_lyrics(artist, title, int(attr.get("media_duration", 0)))
+                            
+                            current_song = {
+                                "title": title,
+                                "artist": artist,
+                                "album": attr.get("media_album_name"),
+                                "image": attr.get("entity_picture"),
+                                "position": current_pos,
+                                "duration": attr.get("media_duration"),
+                                "state": state,
+                                "lyrics": lyrics
+                            }
+                            last_song_key = song_key
+                            last_broadcast_pos = current_pos
+                            last_broadcast_state = state
                             await manager.broadcast(json.dumps({"type": "update", "data": current_song, "options": current_options}))
-                            # Just broadcast the current status (sync) if song is the same
-                            await manager.broadcast(json.dumps({
-                                "type": "sync",
-                                "data": {
-                                    "position": current_song["position"],
-                                    "state": current_song["state"]
-                                }
-                            }))
+                        else:
+                            # Song is the same, check for seek or state change
+                            # We broadcast if state changed OR if position jumped more than 2 seconds from expected
+                            time_passed = 1.0 # Polling interval
+                            expected_pos = last_broadcast_pos + time_passed if last_broadcast_state == "playing" else last_broadcast_pos
+                            
+                            is_seeking = abs((current_pos or 0) - (expected_pos or 0)) > 2.0
+                            is_state_change = state != last_broadcast_state
+                            
+                            if is_seeking or is_state_change:
+                                last_broadcast_pos = current_pos
+                                last_broadcast_state = state
+                                await manager.broadcast(json.dumps({
+                                    "type": "sync",
+                                    "data": {"position": current_pos, "state": state}
+                                }))
                     else:
-                        logger.error(f"HA API Error {resp.status} for {entity_id}")
+                        logger.error(f"HA API Error {resp.status}")
         except Exception as e:
-            logger.error(f"Error monitoring: {e}")
-            traceback.print_exc()
-        await asyncio.sleep(2)
+            logger.error(f"Error: {e}")
+        
+        await asyncio.sleep(1) # Faster polling for better seek detection
 
 @app.on_event("startup")
 async def startup_event():
@@ -172,18 +198,15 @@ async def health_check():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    print(f"[DEBUG] main.py: WebSocket connection attempt from {websocket.client}", flush=True)
     await manager.connect(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-    except Exception as e:
-        print(f"[DEBUG] main.py: WebSocket closure: {e}", flush=True)
+    except Exception:
         manager.disconnect(websocket)
 
-# Serve static files (last)
 app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
