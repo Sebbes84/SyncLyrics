@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import logging
+import traceback
 from typing import Optional
 import syncedlyrics
 
@@ -9,6 +10,12 @@ import aiohttp
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+
+# Configuration
+OPTIONS_PATH = "/data/options.json"
+CACHE_DIR = "/data/lyrics"
+
+print("[DEBUG] main.py: Script started", flush=True)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -195,4 +202,9 @@ async def websocket_endpoint(websocket: WebSocket):
 app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8099)
+    print("[DEBUG] main.py: Entering __main__", flush=True)
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=8099)
+    except Exception as e:
+        print(f"[DEBUG] main.py: FATAL ERROR during uvicorn run: {e}", flush=True)
+        traceback.print_exc()
