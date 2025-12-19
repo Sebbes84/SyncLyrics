@@ -11,7 +11,11 @@ let gameMode = false;
 
 function connectWS() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    // Use relative path to handle Ingress subpaths automatically
+    const path = window.location.pathname.endsWith('/') ? 'ws' : './ws';
+    ws = new WebSocket(`${protocol}//${window.location.host}${window.location.pathname.replace(/\/$/, '')}/ws`);
+
+    console.log("Connecting to WebSocket:", ws.url);
 
     ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
