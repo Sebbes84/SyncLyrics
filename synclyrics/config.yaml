@@ -1,5 +1,5 @@
 name: "SyncLyrics"
-version: "1.1.0"
+version: "1.1.1"
 slug: "synclyrics"
 description: "Fetch, store, and display synced lyrics for your Spotify player."
 url: "https://github.com/Sebbes84/SyncLyrics"
@@ -10,6 +10,9 @@ arch:
   - armv7
   - i386
 init: false
+map:
+  - "share:rw"
+  - "data:rw"
 hassio_api: true
 homeassistant_api: true
 hassio_role: manager
