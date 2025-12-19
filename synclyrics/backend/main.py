@@ -40,6 +40,11 @@ options = get_options()
 HA_URL = "http://supervisor/core/api"
 HA_TOKEN = os.getenv("SUPERVISOR_TOKEN")
 
+logger.info("SyncLyrics Backend starting...")
+logger.info(f"Options loaded: {json.dumps(options, indent=2)}")
+logger.info(f"HA_URL: {HA_URL}")
+logger.info(f"HA_TOKEN present: {'Yes' if HA_TOKEN else 'No'}")
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -111,6 +116,13 @@ async def monitor_ha_state():
             current_options = get_options()
             entity_id = current_options.get("spotify_entity")
             
+            logger.debug(f"Monitoring entity: {entity_id}")
+            
+            if not HA_TOKEN:
+                logger.error("SUPERVISOR_TOKEN is missing! Cannot reach HA API.")
+                await asyncio.sleep(10)
+                continue
+
             headers = {"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"}
             async with aiohttp.ClientSession() as session:
                 url = f"{HA_URL}/states/{entity_id}"
@@ -159,7 +171,8 @@ async def monitor_ha_state():
                             }))
                     else:
                         error_body = await resp.text()
-                        logger.error(f"Failed to fetch state from HA. Status: {resp.status}, Body: {error_body}, URL: {url}")
+                        logger.error(f"Failed to fetch state from HA. Status: {resp.status}, Entity: {entity_id}, URL: {url}")
+                        logger.error(f"Response body: {error_body}")
         except Exception as e:
             logger.error(f"Error monitoring HA: {e}")
         
