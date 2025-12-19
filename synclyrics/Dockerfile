@@ -13,7 +13,8 @@ RUN \
         py3-pip \
     && pip3 install --no-cache-dir --break-system-packages \
         fastapi \
-        uvicorn \
+        "uvicorn[standard]" \
+        websockets \
         aiohttp \
         requests \
         syncedlyrics
