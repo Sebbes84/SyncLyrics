@@ -110,9 +110,12 @@ function renderLyrics() {
 }
 
 function syncPosition(data) {
-    currentPosition = data.position || 0;
+    if (data.position !== undefined) {
+        currentPosition = data.position;
+    }
     isPlaying = data.state === 'playing';
     lastUpdate = Date.now();
+    console.log("[DEBUG] syncPosition:", { currentPosition, isPlaying });
 }
 
 function adjustOffset(val) {
@@ -121,20 +124,17 @@ function adjustOffset(val) {
 }
 
 function updateUI() {
-    if (!isPlaying) {
-        requestAnimationFrame(updateUI);
-        return;
-    }
-
     const now = Date.now();
-    const elapsed = (now - lastUpdate) / 1000;
+    const elapsed = isPlaying ? (now - lastUpdate) / 1000 : 0;
     const actualPos = currentPosition + elapsed + offset + autoOffset;
 
+    // Update Progress Bar
     if (duration > 0) {
         const progress = (actualPos / duration) * 100;
         document.getElementById('progress-bar').style.width = Math.min(100, progress) + '%';
     }
 
+    // Highlight current lyric
     let activeIndex = -1;
     for (let i = 0; i < currentLyrics.length; i++) {
         if (actualPos >= currentLyrics[i].time) {
@@ -145,11 +145,15 @@ function updateUI() {
     }
 
     if (activeIndex !== -1) {
-        document.querySelectorAll('.lyric-line').forEach((el, i) => {
-            el.classList.toggle('active', i === activeIndex);
+        const lines = document.querySelectorAll('.lyric-line');
+        lines.forEach((el, i) => {
+            const isActive = i === activeIndex;
+            el.classList.toggle('active', isActive);
             el.classList.toggle('past', i < activeIndex);
-            if (i === activeIndex && !el.dataset.scrolled) {
+
+            if (isActive && el.dataset.lastActiveIndex !== activeIndex.toString()) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.dataset.lastActiveIndex = activeIndex.toString();
             }
         });
     }
