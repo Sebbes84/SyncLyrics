@@ -55,6 +55,11 @@ function updateSong(data, options) {
     // Parse Lyrics
     rawLyrics = data.lyrics;
     parseLRC(rawLyrics);
+
+    // Reset scroll to top for the new song
+    const container = document.getElementById('lyrics-container');
+    if (container) container.scrollTop = 0;
+
     syncPosition({ position: data.position, state: data.state });
 }
 
