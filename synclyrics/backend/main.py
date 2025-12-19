@@ -103,14 +103,18 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
 
 async def monitor_ha_state():
     """Monitor Home Assistant player state."""
-    entity_id = options.get("spotify_entity")
     last_song = None
     
     while True:
         try:
+            # Refresh options in each loop to catch changes without restart
+            current_options = get_options()
+            entity_id = current_options.get("spotify_entity")
+            
             headers = {"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"}
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{HA_URL}/states/{entity_id}", headers=headers) as resp:
+                url = f"{HA_URL}/states/{entity_id}"
+                async with session.get(url, headers=headers) as resp:
                     if resp.status == 200:
                         state = await resp.json()
                         attr = state.get("attributes", {})
@@ -125,8 +129,11 @@ async def monitor_ha_state():
                             "state": state.get("state") # playing, paused, etc
                         }
 
-                        if current_song["title"] != (last_song["title"] if last_song else None):
-                            logger.info(f"Song changed: {current_song['title']}")
+                        if not current_song["title"]:
+                            # logger.debug("No song title found in attributes")
+                            pass
+                        elif current_song["title"] != (last_song["title"] if last_song else None):
+                            logger.info(f"Song changed: {current_song['title']} by {current_song['artist']}")
                             lyrics = await fetch_lyrics(
                                 current_song["artist"], 
                                 current_song["title"], 
@@ -139,7 +146,7 @@ async def monitor_ha_state():
                             await manager.broadcast(json.dumps({
                                 "type": "update",
                                 "data": current_song,
-                                "options": options
+                                "options": current_options
                             }))
                         else:
                             # Just broadcast the current position if playing
@@ -150,10 +157,13 @@ async def monitor_ha_state():
                                     "state": current_song["state"]
                                 }
                             }))
+                    else:
+                        error_body = await resp.text()
+                        logger.error(f"Failed to fetch state from HA. Status: {resp.status}, Body: {error_body}, URL: {url}")
         except Exception as e:
             logger.error(f"Error monitoring HA: {e}")
         
-        await asyncio.sleep(1)
+        await asyncio.sleep(2) # Increased sleep slightly to be less aggressive
 
 @app.on_event("startup")
 async def startup_event():
