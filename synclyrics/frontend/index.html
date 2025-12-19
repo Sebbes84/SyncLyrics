@@ -27,10 +27,20 @@
             </div>
         </footer>
 
-        <div id="offset-control">
-            <button class="offset-btn" onclick="adjustOffset(0.1)">+</button>
-            <span id="offset-val" style="font-size: 0.8rem; text-align: center;">0s</span>
-            <button class="offset-btn" onclick="adjustOffset(-0.1)">-</button>
+        <div id="controls">
+            <div class="control-group">
+                <span class="label">Jeu</span>
+                <label class="switch">
+                    <input type="checkbox" id="game-mode-toggle" onchange="toggleGameMode()">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="control-group">
+                <span class="label">Sync</span>
+                <button class="offset-btn" onclick="adjustOffset(0.1)">+</button>
+                <span id="offset-val">0s</span>
+                <button class="offset-btn" onclick="adjustOffset(-0.1)">-</button>
+            </div>
         </div>
     </div>
 
