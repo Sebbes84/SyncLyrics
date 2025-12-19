@@ -68,21 +68,31 @@ manager = ConnectionManager()
 async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
     """Fetch lyrics using syncedlyrics library."""
     filename = f"{artist}_{title}".replace(" ", "_").lower() + ".lrc"
+    if not os.path.exists(CACHE_DIR):
+        os.makedirs(CACHE_DIR)
+    
     cache_path = os.path.join(CACHE_DIR, filename)
 
     if os.path.exists(cache_path):
         with open(cache_path, 'r', encoding='utf-8') as f:
             return f.read()
 
-    providers = options.get("lyric_providers", ["lrclib", "musixmatch", "genius"])
+    # Use current options
+    current_options = get_options()
+    
+    # We'll try with default providers first to be robust against config issues
+    logger.info(f"Searching lyrics for {artist} - {title}")
     
     def search():
         try:
-            mx_token = options.get("musixmatch_token")
-            gn_token = options.get("genius_token")
+            mx_token = current_options.get("musixmatch_token")
+            gn_token = current_options.get("genius_token")
             if mx_token: os.environ["MUSIXMATCH_TOKEN"] = mx_token
             if gn_token: os.environ["GENIUS_ACCESS_TOKEN"] = gn_token
-            return syncedlyrics.search(f"{artist} - {title}", providers=providers)
+            
+            # Use default providers by not passing the argument, or pass them carefully
+            # The error "Providers str not found" suggests a type issue.
+            return syncedlyrics.search(f"{artist} - {title}")
         except Exception as e:
             logger.error(f"Error in syncedlyrics search: {e}")
             return None
@@ -137,7 +147,7 @@ async def monitor_ha_state():
                             current_song["lyrics"] = lyrics
                             last_song = current_song
                             await manager.broadcast(json.dumps({"type": "update", "data": current_song, "options": current_options}))
-                        else:
+                        elif current_song["state"] == "playing":
                             await manager.broadcast(json.dumps({
                                 "type": "sync",
                                 "data": {"position": current_song["position"], "state": current_song["state"]}
@@ -146,6 +156,7 @@ async def monitor_ha_state():
                         logger.error(f"HA API Error {resp.status} for {entity_id}")
         except Exception as e:
             logger.error(f"Error monitoring: {e}")
+            traceback.print_exc()
         await asyncio.sleep(2)
 
 @app.on_event("startup")
@@ -158,13 +169,15 @@ async def health_check():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    print(f"[DEBUG] main.py: WebSocket connection attempt from {websocket.client}", flush=True)
     await manager.connect(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-    except Exception:
+    except Exception as e:
+        print(f"[DEBUG] main.py: WebSocket closure: {e}", flush=True)
         manager.disconnect(websocket)
 
 # Serve static files (last)
