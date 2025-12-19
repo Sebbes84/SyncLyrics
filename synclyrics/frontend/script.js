@@ -1,5 +1,6 @@
 let ws;
 let currentLyrics = [];
+let rawLyrics = ""; // Store raw lyrics for re-parsing
 let currentPosition = 0;
 let duration = 0;
 let isPlaying = false;
@@ -33,7 +34,10 @@ function updateSong(data, options) {
     document.getElementById('song-artist').innerText = data.artist || "Unknown";
 
     duration = data.duration || 0;
+
+    // Initial game mode state from config
     gameMode = options.game_mode_enabled;
+    document.getElementById('game-mode-toggle').checked = gameMode;
 
     // Background
     const bg = document.getElementById('background-layer');
@@ -49,8 +53,19 @@ function updateSong(data, options) {
     document.getElementById('footer').classList.toggle('visible', options.show_progress_bar);
 
     // Parse Lyrics
-    parseLRC(data.lyrics);
+    rawLyrics = data.lyrics;
+    parseLRC(rawLyrics);
     syncPosition({ position: data.position, state: data.state });
+}
+
+function toggleGameMode() {
+    gameMode = document.getElementById('game-mode-toggle').checked;
+    console.log("[DEBUG] Game Mode Toggled:", gameMode);
+
+    // Reset dataset to force scroll on next tick
+    document.querySelectorAll('.lyric-line').forEach(el => delete el.dataset.lastActiveIndex);
+
+    parseLRC(rawLyrics);
 }
 
 function parseLRC(lrcText) {
@@ -70,7 +85,7 @@ function parseLRC(lrcText) {
             const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 100;
             let text = line.replace(timeRegex, '').trim();
 
-            if (gameMode && text.length > 10 && Math.random() > 0.7) {
+            if (gameMode && text.length > 10) {
                 text = maskWords(text);
             }
 
@@ -83,7 +98,7 @@ function parseLRC(lrcText) {
             .filter(l => l.trim().length > 0)
             .map((text, i) => ({
                 time: -1,
-                text: gameMode && text.length > 10 && Math.random() > 0.7 ? maskWords(text) : text
+                text: gameMode && text.length > 10 ? maskWords(text) : text
             }));
     }
 
@@ -93,9 +108,11 @@ function parseLRC(lrcText) {
 function maskWords(text) {
     const words = text.split(' ');
     const count = Math.max(1, Math.floor(words.length / 3));
+    // Use a seed or predictable random if we want consistency, 
+    // but for "instant fun" random is fine.
     for (let i = 0; i < count; i++) {
         const idx = Math.floor(Math.random() * words.length);
-        if (words[idx].length > 2) {
+        if (words[idx].length > 2 && !words[idx].includes('<span')) {
             words[idx] = `<span class="masked">${words[idx]}</span>`;
         }
     }
@@ -105,7 +122,7 @@ function maskWords(text) {
 function renderLyrics() {
     const container = document.getElementById('lyrics-container');
     container.innerHTML = currentLyrics.map((line, i) => `
-        <div class="lyric-line" id="line-${i}">${line.text}</div>
+        <div class="lyric-line ${line.isMasked ? 'hidden-word' : ''}" id="line-${i}">${line.text}</div>
     `).join('');
 }
 
