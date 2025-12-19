@@ -16,7 +16,7 @@
 
 ## Ports réseau
 
-L'add-on utilise le port **8080/tcp** pour servir l'interface web. Ce port doit rester ouvert pour que l'intégration par iframe (ou carte Lovelace) fonctionne.
+L'add-on utilise le port **8099/tcp** pour servir l'interface web. Ce port doit rester ouvert pour que l'intégration par iframe (ou carte Lovelace) fonctionne.
 
 ## Stockage des données
 
@@ -29,3 +29,4 @@ Vérifiez que l'entité Spotify est bien en cours de lecture dans Home Assistant
 
 ### Les paroles ne s'affichent pas du tout
 L'add-on utilise par défaut **LRCLIB** (gratuit). Pour de meilleurs résultats, vous pouvez ajouter vos jetons **Musixmatch** ou **Genius** dans la configuration. Certaines chansons très récentes ou très rares peuvent ne pas être répertoriées sur toutes les plateformes.
+
