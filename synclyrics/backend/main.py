@@ -209,16 +209,22 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"[DEBUG] main.py: WebSocket error: {e}", flush=True)
         manager.disconnect(websocket)
 
+# Serve static frontend
+app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
+
 @app.api_route("/{path_name:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 async def catch_all(request: Request, path_name: str):
     print(f"[DEBUG] main.py: Catch-all route hit: {request.method} /{path_name}", flush=True)
+    print(f"[DEBUG] main.py: Headers: {dict(request.headers)}", flush=True)
     return JSONResponse(
         status_code=404,
-        content={"error": "Not Found", "requested_path": path_name, "method": request.method}
+        content={
+            "error": "Not Found", 
+            "requested_path": path_name, 
+            "method": request.method,
+            "headers": dict(request.headers)
+        }
     )
-
-# Serve static frontend (last)
-app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
     print("[DEBUG] main.py: Entering __main__", flush=True)
