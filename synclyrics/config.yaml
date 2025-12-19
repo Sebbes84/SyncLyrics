@@ -10,11 +10,10 @@ arch:
   - armv7
   - i386
 init: false
-ports:
-  8080/tcp: 8080
-panel_icon: mdi:music-note-bluetooth
-panel_title: SyncLyrics
+hassio_api: true
 ingress: true
+ports:
+  8099/tcp: 8099
 options:
   spotify_entity: "media_player.spotify_user"
   cache_size_mb: 100
