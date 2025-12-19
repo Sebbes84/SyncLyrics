@@ -115,7 +115,7 @@ function syncPosition(data) {
     }
     isPlaying = data.state === 'playing';
     lastUpdate = Date.now();
-    console.log("[DEBUG] syncPosition:", { currentPosition, isPlaying });
+    console.log("[DEBUG] Sync received:", { pos: currentPosition, playing: isPlaying });
 }
 
 function adjustOffset(val) {
