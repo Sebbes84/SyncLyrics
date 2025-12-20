@@ -125,9 +125,10 @@ header h2 {
 /* Footer */
 footer {
     height: 60px;
-    padding: 0 20px;
+    padding: 0 40px;
     display: flex;
     align-items: center;
+    gap: 30px;
     background: linear-gradient(to top, var(--bg-overlay), transparent);
     z-index: 2;
     display: none;
@@ -155,22 +156,21 @@ footer.visible {
 
 /* Controls */
 #controls-container {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    z-index: 10;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 10px;
 }
 
 #controls {
+    position: absolute;
+    bottom: calc(100% + 15px);
+    right: 0;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(15px);
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(20px);
     padding: 15px;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -178,24 +178,24 @@ footer.visible {
     transform: translateY(10px);
     pointer-events: none;
     transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    min-width: 180px;
 }
 
 #controls-toggle {
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    border: none;
     color: white;
-    width: 45px;
-    height: 45px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    opacity: 0.6;
 }
 
 #controls-container:hover #controls {
@@ -205,8 +205,9 @@ footer.visible {
 }
 
 #controls-toggle:hover {
-    background: var(--primary-color);
+    opacity: 1;
     transform: rotate(45deg) scale(1.1);
+    color: var(--primary-color);
 }
 
 .control-group {
