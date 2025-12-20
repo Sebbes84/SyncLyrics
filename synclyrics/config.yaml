@@ -1,5 +1,5 @@
 name: "SyncLyrics"
-version: "1.1.1"
+version: "0.0.1"
 slug: "synclyrics"
 description: "Fetch, store, and display synced lyrics for your Spotify player."
 url: "https://github.com/Sebbes84/SyncLyrics"
@@ -45,3 +45,4 @@ schema:
   genius_token: str?
   remote_url: str?
   remote_secret: str?
+
