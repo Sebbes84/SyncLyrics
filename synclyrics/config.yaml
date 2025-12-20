@@ -1,5 +1,5 @@
 name: "SyncLyrics"
-version: "1.1.1"
+version: "1.1.2"
 slug: "synclyrics"
 description: "Fetch, store, and display synced lyrics for your Spotify player."
 url: "https://github.com/Sebbes84/SyncLyrics"
@@ -41,3 +41,4 @@ schema:
   lyric_providers: list(str)
   musixmatch_token: str?
   genius_token: str?
+
