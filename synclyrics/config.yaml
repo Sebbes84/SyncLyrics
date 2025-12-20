@@ -1,5 +1,5 @@
 name: "SyncLyrics"
-version: "0.0.1"
+version: "1.1.1"
 slug: "synclyrics"
 description: "Fetch, store, and display synced lyrics for your Spotify player."
 url: "https://github.com/Sebbes84/SyncLyrics"
@@ -22,7 +22,7 @@ ingress: true
 ports:
   8099/tcp: 8099
 options:
-  spotify_entity: "media_player.spotify_user"
+  spotify_entity: ""
   cache_size_mb: 100
   show_header: true
   show_progress_bar: true
@@ -31,6 +31,8 @@ options:
   lyric_providers: ["lrclib", "musixmatch", "genius"]
   musixmatch_token: ""
   genius_token: ""
+  remote_url: ""
+  remote_secret: ""
 schema:
   spotify_entity: str
   cache_size_mb: int
@@ -41,6 +43,5 @@ schema:
   lyric_providers: list(str)
   musixmatch_token: str?
   genius_token: str?
-
-
-
+  remote_url: str?
+  remote_secret: str?
