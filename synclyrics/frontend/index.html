@@ -27,26 +27,25 @@
             <div id="progress-bar-container">
                 <div id="progress-bar"></div>
             </div>
-        </footer>
-
-        <div id="controls-container">
-            <div id="controls">
-                <div class="control-group">
-                    <span class="label">Jeu</span>
-                    <label class="switch">
-                        <input type="checkbox" id="game-mode-toggle" onchange="toggleGameMode()">
-                        <span class="slider round"></span>
-                    </label>
+            <div id="controls-container">
+                <div id="controls">
+                    <div class="control-group">
+                        <span class="label">Jeu</span>
+                        <label class="switch">
+                            <input type="checkbox" id="game-mode-toggle" onchange="toggleGameMode()">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <span class="label">Sync</span>
+                        <button class="offset-btn" onclick="adjustOffset(0.1)">+</button>
+                        <span id="offset-val">0s</span>
+                        <button class="offset-btn" onclick="adjustOffset(-0.1)">-</button>
+                    </div>
                 </div>
-                <div class="control-group">
-                    <span class="label">Sync</span>
-                    <button class="offset-btn" onclick="adjustOffset(0.1)">+</button>
-                    <span id="offset-val">0s</span>
-                    <button class="offset-btn" onclick="adjustOffset(-0.1)">-</button>
-                </div>
+                <button id="controls-toggle">⚙️</button>
             </div>
-            <button id="controls-toggle">⚙️</button>
-        </div>
+        </footer>
     </div>
 
     <script src="script.js"></script>
