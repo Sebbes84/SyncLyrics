@@ -161,13 +161,21 @@ async def monitor_ha_state():
                             pass
                         elif song_key != last_song_key:
                             logger.info(f"Song changed: {title} by {artist}")
+                            # DEBUG: Log all available attribute keys to see if 'next' track info exists
+                            logger.info(f"Available attributes: {list(attr.keys())}")
+                            
                             lyrics = await fetch_lyrics(artist, title, int(attr.get("media_duration", 0)))
                             
+                            # Local proxy for images if accessed via IP
+                            image_url = attr.get("entity_picture")
+                            if image_url:
+                                image_url = f"/api/proxy?url={image_url}"
+
                             song_info = {
                                 "title": title,
                                 "artist": artist,
                                 "album": attr.get("media_album_name"),
-                                "image": attr.get("entity_picture"),
+                                "image": image_url,
                                 "position": current_pos,
                                 "duration": attr.get("media_duration"),
                                 "state": state,
@@ -216,6 +224,26 @@ async def startup_event():
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+@app.get("/api/proxy")
+async def proxy_image(url: str):
+    """Proxy image requests to Home Assistant."""
+    if not url:
+        return {"error": "No URL provided"}
+    
+    # Ensure the URL is from HA
+    if not url.startswith("/"):
+        return {"error": "Invalid URL"}
+
+    async with aiohttp.ClientSession() as session:
+        target_url = f"{HA_URL.replace('/api', '')}{url}"
+        async with session.get(target_url, headers={"Authorization": f"Bearer {HA_TOKEN}"}) as resp:
+            if resp.status == 200:
+                content = await resp.read()
+                from fastapi import Response
+                return Response(content=content, media_type=resp.headers.get("Content-Type"))
+            else:
+                return {"error": f"Failed to fetch image: {resp.status}"}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
