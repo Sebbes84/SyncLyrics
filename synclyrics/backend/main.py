@@ -80,6 +80,32 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+async def push_to_remote(song_data: dict):
+    """Push state to remote Alwaysdata server if configured."""
+    current_options = get_options()
+    remote_url = current_options.get("remote_url")
+    remote_secret = current_options.get("remote_secret")
+    
+    if not remote_url or not remote_secret:
+        return
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Append endpoint if missing
+            url = remote_url
+            if not url.endswith('/api/webhooks/lyrics'):
+                url = url.rstrip('/') + '/api/webhooks/lyrics'
+            
+            payload = {
+                "secret": remote_secret,
+                "song_state": song_data
+            }
+            async with session.post(url, json=payload, timeout=5) as resp:
+                if resp.status != 200:
+                    logger.error(f"Remote push error: {resp.status}")
+    except Exception as e:
+        logger.error(f"Failed to push to remote: {e}")
+
 async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
     """Fetch lyrics using syncedlyrics library."""
     filename = f"{artist}_{title}".replace(" ", "_").lower() + ".lrc"
@@ -190,6 +216,7 @@ async def monitor_ha_state():
                             last_broadcast_pos = current_pos
                             last_broadcast_state = state
                             await manager.broadcast(json.dumps({"type": "update", "data": song_info, "options": current_options}))
+                            await push_to_remote(song_info)
                         else:
                             # Song is the same, check for seek or state change
                             time_passed = 1.0 
@@ -210,6 +237,9 @@ async def monitor_ha_state():
                                     "type": "sync",
                                     "data": {"position": current_pos, "state": state}
                                 }))
+                                # Also push sync to remote
+                                if current_state["song"]:
+                                    await push_to_remote(current_state["song"])
                     else:
                         logger.error(f"HA API Error {resp.status}")
         except Exception as e:
