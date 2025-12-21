@@ -90,33 +90,6 @@ body.cinema-mode #app.collapsed {
     transform: translate(-50%, calc(-100% + 60px));
 }
 
-#screen-toggle-btn {
-    display: none;
-    background: transparent;
-    border: none;
-    color: white;
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.2rem;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    opacity: 0.6;
-    flex-shrink: 0;
-}
-
-#screen-toggle-btn:hover {
-    opacity: 1;
-    transform: scale(1.1);
-    color: var(--primary-color);
-}
-
-body.cinema-mode #screen-toggle-btn {
-    display: flex;
-}
-
 body.cinema-mode #background-layer {
     display: none !important;
 }
@@ -199,10 +172,12 @@ header h2 {
 /* Footer */
 footer {
     height: 60px;
-    padding: 0 40px;
+    padding: 0 20px;
+    /* Réduit un peu pour plus de place */
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: 20px;
+    /* Gap homogène entre tous les éléments */
     background: linear-gradient(to top, var(--bg-overlay), transparent);
     z-index: 2;
     display: none;
@@ -214,9 +189,10 @@ footer.visible {
 
 #progress-bar-container {
     flex: 1;
-    height: 4px;
+    height: 6px;
+    /* Un peu plus épais pour la visibilité */
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+    border-radius: 3px;
     position: relative;
     overflow: hidden;
 }
@@ -267,12 +243,13 @@ footer.visible {
     background: transparent;
 }
 
+#screen-toggle-btn,
 #controls-toggle {
     background: transparent;
     border: none;
     color: white;
-    width: 35px;
-    height: 35px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     cursor: pointer;
     font-size: 1.2rem;
@@ -281,6 +258,19 @@ footer.visible {
     justify-content: center;
     transition: all 0.3s ease;
     opacity: 0.6;
+    flex-shrink: 0;
+}
+
+#screen-toggle-btn:hover,
+#controls-toggle:hover {
+    opacity: 1;
+    color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+#screen-toggle-btn {
+    display: none;
+    /* Masqué hors mode cinema */
 }
 
 #controls-container:hover #controls {
@@ -289,10 +279,8 @@ footer.visible {
     pointer-events: auto;
 }
 
-#controls-toggle:hover {
-    opacity: 1;
-    transform: rotate(45deg) scale(1.1);
-    color: var(--primary-color);
+body.cinema-mode #screen-toggle-btn {
+    display: flex;
 }
 
 .control-group {
