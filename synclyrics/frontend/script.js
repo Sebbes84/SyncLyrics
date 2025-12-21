@@ -199,5 +199,12 @@ function updateUI() {
     requestAnimationFrame(updateUI);
 }
 
+function toggleScreen() {
+    const app = document.getElementById('app');
+    const btn = document.getElementById('screen-toggle-btn');
+    const isCollapsed = app.classList.toggle('collapsed');
+    btn.innerText = isCollapsed ? '🔽' : '🔼';
+}
+
 connectWS();
 updateUI();
