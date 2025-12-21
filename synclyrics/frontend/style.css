@@ -203,6 +203,26 @@ footer.visible {
     display: flex;
 }
 
+#footer-song-info {
+    display: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+#app.collapsed #footer-song-info {
+    display: block;
+}
+
+#footer-song-info .hidden-by-option {
+    display: none;
+}
+
+
 #progress-bar-container {
     flex: 1;
     height: 6px;
@@ -303,8 +323,13 @@ footer.visible {
     /* Same shade as the gear/cog usually appears */
 }
 
+#screen-toggle-btn:hover {
+    color: #fff;
+    /* White on hover, no blue/green */
+    background: rgba(255, 255, 255, 0.05);
+    opacity: 1;
+}
 
-#screen-toggle-btn:hover,
 #controls-toggle:hover {
     opacity: 1;
     color: var(--primary-color);
