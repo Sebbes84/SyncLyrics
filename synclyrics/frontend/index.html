@@ -13,6 +13,9 @@
     <div id="background-layer"></div>
     <iframe id="cinema-background" frameborder="0" allowfullscreen></iframe>
 
+    <button id="fullscreen-btn" onclick="toggleFullscreen()" title="Plein écran">⛶</button>
+
+
     <div id="app">
         <header id="header">
             <h1 id="song-title">Song Title</h1>
@@ -35,6 +38,20 @@
                         <span class="label">Jeu</span>
                         <label class="switch">
                             <input type="checkbox" id="game-mode-toggle" onchange="toggleGameMode()">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <span class="label">Masquer Artiste</span>
+                        <label class="switch">
+                            <input type="checkbox" id="hide-artist-toggle" onchange="updateVisibilitySettings()">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <span class="label">Masquer Titre</span>
+                        <label class="switch">
+                            <input type="checkbox" id="hide-title-toggle" onchange="updateVisibilitySettings()">
                             <span class="slider round"></span>
                         </label>
                     </div>
