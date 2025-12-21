@@ -86,6 +86,16 @@ body.cinema-mode #app {
     /* Garantit que rien ne dépasse de l'écran cinema */
 }
 
+body.cinema-mode #app.collapsed #header {
+    display: flex !important;
+}
+
+body.cinema-mode #app.collapsed #header h1.hidden-by-option,
+body.cinema-mode #app.collapsed #header h2.hidden-by-option {
+    display: none !important;
+}
+
+
 body.cinema-mode #app.collapsed {
     transform: translate(-50%, calc(-100% + 60px));
 }
@@ -111,6 +121,12 @@ header {
 header.visible {
     display: flex;
 }
+
+header h1.hidden-by-option,
+header h2.hidden-by-option {
+    display: none;
+}
+
 
 header h1 {
     margin: 0;
@@ -204,6 +220,27 @@ footer.visible {
     transition: width 1s linear;
 }
 
+/* Fullscreen Button */
+#fullscreen-btn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 100;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+    pointer-events: auto;
+}
+
+#fullscreen-btn:hover {
+    opacity: 1;
+}
+
+
 /* Controls */
 #controls-container {
     position: relative;
@@ -260,6 +297,12 @@ footer.visible {
     opacity: 0.6;
     flex-shrink: 0;
 }
+
+#screen-toggle-btn {
+    color: #666;
+    /* Same shade as the gear/cog usually appears */
+}
+
 
 #screen-toggle-btn:hover,
 #controls-toggle:hover {
