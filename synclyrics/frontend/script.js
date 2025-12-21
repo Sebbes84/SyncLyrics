@@ -32,6 +32,9 @@ function connectWS() {
 function updateSong(data, options) {
     document.getElementById('song-title').innerText = data.title || "Unknown";
     document.getElementById('song-artist').innerText = data.artist || "Unknown";
+    document.getElementById('footer-song-title').innerText = data.title || "Unknown";
+    document.getElementById('footer-song-artist').innerText = data.artist || "Unknown";
+
 
     duration = data.duration || 0;
 
@@ -224,7 +227,12 @@ function updateVisibilitySettings() {
 
     document.getElementById('song-artist').classList.toggle('hidden-by-option', hideArtist);
     document.getElementById('song-title').classList.toggle('hidden-by-option', hideTitle);
+
+    // Also apply to footer info
+    document.getElementById('footer-song-artist').classList.toggle('hidden-by-option', hideArtist);
+    document.getElementById('footer-song-title').classList.toggle('hidden-by-option', hideTitle);
 }
+
 
 connectWS();
 updateUI();
