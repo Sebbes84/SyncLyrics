@@ -48,13 +48,29 @@ function updateSong(data, options) {
         bg.classList.remove('visible');
     }
 
-    // Header/Footer visibility
+    // Cinema Mode
+    const isCinema = options.cinema_mode;
+    document.body.classList.toggle('cinema-mode', isCinema);
+    if (isCinema) {
+        document.documentElement.style.setProperty('--cinema-width', (options.cinema_screen_width || 80) + '%');
+        document.documentElement.style.setProperty('--cinema-height', (options.cinema_screen_height || 60) + '%');
+        document.documentElement.style.setProperty('--cinema-opacity', (options.cinema_screen_opacity !== undefined ? options.cinema_screen_opacity / 100 : 0.7));
+
+        const cinemaBg = document.getElementById('cinema-background');
+        if (options.background_url && cinemaBg.src !== options.background_url) {
+            cinemaBg.src = options.background_url;
+        }
+    }
+
+    // Header/Footer visibility (in cinema mode, these are inside the #app which is sized)
     document.getElementById('header').classList.toggle('visible', options.show_header);
     document.getElementById('footer').classList.toggle('visible', options.show_progress_bar);
 
     // Parse Lyrics
-    rawLyrics = data.lyrics;
-    parseLRC(rawLyrics);
+    if (rawLyrics !== data.lyrics) {
+        rawLyrics = data.lyrics;
+        parseLRC(rawLyrics);
+    }
 
     // Reset scroll to top for the new song
     const container = document.getElementById('lyrics-container');
