@@ -31,8 +31,11 @@ options:
   lyric_providers: ["lrclib", "musixmatch", "genius"]
   musixmatch_token: ""
   genius_token: ""
-  remote_url: ""
-  remote_secret: ""
+  background_url: ""
+  cinema_mode: false
+  cinema_screen_width: 80
+  cinema_screen_height: 60
+  cinema_screen_opacity: 70
 schema:
   spotify_entity: str
   cache_size_mb: int
@@ -43,6 +46,8 @@ schema:
   lyric_providers: list(str)
   musixmatch_token: str?
   genius_token: str?
-  remote_url: str?
-  remote_secret: str?
-
+  background_url: str?
+  cinema_mode: bool
+  cinema_screen_width: int
+  cinema_screen_height: int
+  cinema_screen_opacity: int
