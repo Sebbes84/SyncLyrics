@@ -203,7 +203,27 @@ function toggleScreen() {
     const app = document.getElementById('app');
     const btn = document.getElementById('screen-toggle-btn');
     const isCollapsed = app.classList.toggle('collapsed');
-    btn.innerText = isCollapsed ? '🔽' : '🔼';
+    btn.innerText = isCollapsed ? '▼' : '▲';
+}
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
+function updateVisibilitySettings() {
+    const hideArtist = document.getElementById('hide-artist-toggle').checked;
+    const hideTitle = document.getElementById('hide-title-toggle').checked;
+
+    document.getElementById('song-artist').classList.toggle('hidden-by-option', hideArtist);
+    document.getElementById('song-title').classList.toggle('hidden-by-option', hideTitle);
 }
 
 connectWS();
