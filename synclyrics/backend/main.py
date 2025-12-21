@@ -80,32 +80,6 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-async def push_to_remote(song_data: dict):
-    """Push state to remote Alwaysdata server if configured."""
-    current_options = get_options()
-    remote_url = current_options.get("remote_url")
-    remote_secret = current_options.get("remote_secret")
-    
-    if not remote_url or not remote_secret:
-        return
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            # Append endpoint if missing
-            url = remote_url
-            if not url.endswith('/api/webhooks/lyrics'):
-                url = url.rstrip('/') + '/api/webhooks/lyrics'
-            
-            payload = {
-                "secret": remote_secret,
-                "song_state": song_data
-            }
-            async with session.post(url, json=payload, timeout=5) as resp:
-                if resp.status != 200:
-                    logger.error(f"Remote push error: {resp.status}")
-    except Exception as e:
-        logger.error(f"Failed to push to remote: {e}")
-
 async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
     """Fetch lyrics using syncedlyrics library."""
     filename = f"{artist}_{title}".replace(" ", "_").lower() + ".lrc"
@@ -153,10 +127,16 @@ async def monitor_ha_state():
     last_song_key = None
     last_broadcast_pos = -1
     last_broadcast_state = None
+    last_options = None
     
     while True:
         try:
             current_options = get_options()
+            
+            # Detect option change
+            options_changed = last_options is not None and current_options != last_options
+            last_options = current_options
+
             entity_id = current_options.get("spotify_entity")
             if not HA_TOKEN:
                 await asyncio.sleep(5)
@@ -185,10 +165,11 @@ async def monitor_ha_state():
                         
                         if not title:
                             pass
-                        elif song_key != last_song_key:
-                            logger.info(f"Song changed: {title} by {artist}")
-                            # DEBUG: Log all available attribute keys to see if 'next' track info exists
-                            logger.info(f"Available attributes: {list(attr.keys())}")
+                        elif song_key != last_song_key or options_changed:
+                            if song_key != last_song_key:
+                                logger.info(f"Song changed: {title} by {artist}")
+                            else:
+                                logger.info("Options changed, broadcasting update")
                             
                             lyrics = await fetch_lyrics(artist, title, int(attr.get("media_duration", 0)))
                             
@@ -216,7 +197,6 @@ async def monitor_ha_state():
                             last_broadcast_pos = current_pos
                             last_broadcast_state = state
                             await manager.broadcast(json.dumps({"type": "update", "data": song_info, "options": current_options}))
-                            await push_to_remote(song_info)
                         else:
                             # Song is the same, check for seek or state change
                             time_passed = 1.0 
@@ -237,13 +217,11 @@ async def monitor_ha_state():
                                     "type": "sync",
                                     "data": {"position": current_pos, "state": state}
                                 }))
-                                # Also push sync to remote
-                                if current_state["song"]:
-                                    await push_to_remote(current_state["song"])
                     else:
                         logger.error(f"HA API Error {resp.status}")
         except Exception as e:
             logger.error(f"Error: {e}")
+            traceback.print_exc()
         
         await asyncio.sleep(1)
 
