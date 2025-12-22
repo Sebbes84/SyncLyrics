@@ -109,6 +109,9 @@ function parseLRC(lrcText) {
             const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 100;
             let text = line.replace(timeRegex, '').trim();
 
+            // Automatic wrapping for very long lines
+            text = wrapText(text, 40);
+
             if (gameMode && text.length > 10) {
                 text = maskWords(text);
             }
@@ -120,27 +123,54 @@ function parseLRC(lrcText) {
     if (currentLyrics.length === 0 && lines.some(l => l.trim().length > 0)) {
         currentLyrics = lines
             .filter(l => l.trim().length > 0)
-            .map((text, i) => ({
-                time: -1,
-                text: gameMode && text.length > 10 ? maskWords(text) : text
-            }));
+            .map((text, i) => {
+                let wrappedText = wrapText(text, 40);
+                return {
+                    time: -1,
+                    text: gameMode && text.length > 10 ? maskWords(wrappedText) : wrappedText
+                };
+            });
     }
 
     renderLyrics();
 }
 
 function maskWords(text) {
-    const words = text.split(' ');
-    const count = Math.max(1, Math.floor(words.length / 3));
-    // Use a seed or predictable random if we want consistency, 
-    // but for "instant fun" random is fine.
-    for (let i = 0; i < count; i++) {
-        const idx = Math.floor(Math.random() * words.length);
-        if (words[idx].length > 2 && !words[idx].includes('<span')) {
-            words[idx] = `<span class="masked">${words[idx]}</span>`;
+    // Preserve <br> tags if present
+    const segments = text.split(/(<br\s*\/?>)/i);
+    return segments.map(segment => {
+        if (segment.match(/<br\s*\/?>/i)) return segment;
+
+        const words = segment.split(' ');
+        const count = Math.max(1, Math.floor(words.length / 3));
+        for (let i = 0; i < count; i++) {
+            const idx = Math.floor(Math.random() * words.length);
+            if (words[idx].length > 2 && !words[idx].includes('<span')) {
+                words[idx] = `<span class="masked">${words[idx]}</span>`;
+            }
         }
-    }
-    return words.join(' ');
+        return words.join(' ');
+    }).join('');
+}
+
+function wrapText(text, maxChars) {
+    if (text.length <= maxChars) return text;
+
+    const words = text.split(' ');
+    let lines = [];
+    let currentLine = "";
+
+    words.forEach(word => {
+        if ((currentLine + word).length > maxChars) {
+            if (currentLine) lines.push(currentLine.trim());
+            currentLine = word + " ";
+        } else {
+            currentLine += word + " ";
+        }
+    });
+
+    if (currentLine) lines.push(currentLine.trim());
+    return lines.join('<br>');
 }
 
 function renderLyrics() {
