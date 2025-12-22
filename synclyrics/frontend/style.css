@@ -7,6 +7,10 @@
     --font-family: 'Inter', 'Roboto', sans-serif;
 }
 
+* {
+    box-sizing: border-box;
+}
+
 body,
 html {
     margin: 0;
@@ -25,6 +29,7 @@ html {
     position: relative;
     height: 100vh;
     width: 100vw;
+    max-height: 100vh;
     display: flex;
     flex-direction: column;
     z-index: 10;
@@ -144,8 +149,10 @@ header h2 {
 /* Lyrics Container */
 #lyrics-container {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    padding: 40vh 20px;
+    position: relative;
+    padding: 20vh 20px;
     scroll-behavior: smooth;
     mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
     -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
