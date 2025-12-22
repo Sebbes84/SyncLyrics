@@ -186,6 +186,7 @@ function updateUI() {
     }
 
     if (activeIndex !== -1) {
+        const container = document.getElementById('lyrics-container');
         const lines = document.querySelectorAll('.lyric-line');
         lines.forEach((el, i) => {
             const isActive = i === activeIndex;
@@ -193,18 +194,19 @@ function updateUI() {
             el.classList.toggle('past', i < activeIndex);
 
             if (isActive && el.dataset.lastActiveIndex !== activeIndex.toString()) {
-                const containerHeight = container.offsetHeight;
-                const elOffsetTop = el.offsetTop;
-                const elHeight = el.offsetHeight;
+                if (container) {
+                    const containerHeight = container.offsetHeight;
+                    const elOffsetTop = el.offsetTop;
+                    const elHeight = el.offsetHeight;
 
-                // Calculate scroll position to center the element
-                const scrollPos = elOffsetTop - (containerHeight / 2) + (elHeight / 2);
+                    // Calculate scroll position to center the element
+                    const scrollPos = elOffsetTop - (containerHeight / 2) + (elHeight / 2);
 
-                container.scrollTo({
-                    top: scrollPos,
-                    behavior: 'smooth'
-                });
-
+                    container.scrollTo({
+                        top: scrollPos,
+                        behavior: 'smooth'
+                    });
+                }
                 el.dataset.lastActiveIndex = activeIndex.toString();
             }
         });
