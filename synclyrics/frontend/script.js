@@ -193,7 +193,18 @@ function updateUI() {
             el.classList.toggle('past', i < activeIndex);
 
             if (isActive && el.dataset.lastActiveIndex !== activeIndex.toString()) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const containerHeight = container.offsetHeight;
+                const elOffsetTop = el.offsetTop;
+                const elHeight = el.offsetHeight;
+
+                // Calculate scroll position to center the element
+                const scrollPos = elOffsetTop - (containerHeight / 2) + (elHeight / 2);
+
+                container.scrollTo({
+                    top: scrollPos,
+                    behavior: 'smooth'
+                });
+
                 el.dataset.lastActiveIndex = activeIndex.toString();
             }
         });
@@ -236,3 +247,13 @@ function updateVisibilitySettings() {
 
 connectWS();
 updateUI();
+
+window.addEventListener('resize', () => {
+    // Force re-scroll to active line on resize
+    const activeLine = document.querySelector('.lyric-line.active');
+    if (activeLine) {
+        const container = document.getElementById('lyrics-container');
+        const scrollPos = activeLine.offsetTop - (container.offsetHeight / 2) + (activeLine.offsetHeight / 2);
+        container.scrollTo({ top: scrollPos, behavior: 'auto' });
+    }
+});
