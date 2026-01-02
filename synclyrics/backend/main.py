@@ -7,14 +7,11 @@ import time
 from datetime import datetime
 from typing import Optional
 import syncedlyrics
+
 import aiohttp
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-import paho.mqtt.client as mqtt
-from PIL import Image
-import io
-from urllib.parse import urlparse, parse_qs
 
 # Configuration
 OPTIONS_PATH = "/data/options.json"
@@ -46,85 +43,12 @@ def get_options():
         "show_progress_bar": True,
         "show_background": True,
         "game_mode_enabled": False,
-        "lyric_providers": ["lrclib", "musixmatch", "genius"],
-        "mqtt_enabled": False,
-        "mqtt_topic": "spotify/overlay/color",
-        "mqtt_host": "core-mosquitto",
-        "mqtt_port": 1883
+        "lyric_providers": ["lrclib", "musixmatch", "genius"]
     }
 
 options = get_options()
 HA_URL = "http://supervisor/core/api"
 HA_TOKEN = os.getenv("SUPERVISOR_TOKEN")
-
-# MQTT Client
-mqtt_client = None
-
-def get_mqtt_client(opts):
-    global mqtt_client
-    if not opts.get("mqtt_enabled"):
-        return None
-    
-    if mqtt_client is None:
-        try:
-            client = mqtt.Client()
-            if opts.get("mqtt_user") and opts.get("mqtt_password"):
-                client.username_pw_set(opts["mqtt_user"], opts["mqtt_password"])
-            
-            client.connect(opts.get("mqtt_host", "core-mosquitto"), opts.get("mqtt_port", 1883), 60)
-            client.loop_start()
-            mqtt_client = client
-            logger.info("MQTT Client connected")
-        except Exception as e:
-            logger.error(f"Failed to connect to MQTT: {e}")
-            return None
-    return mqtt_client
-
-def extract_dominant_color(image_data):
-    """Extract dominant color from image data and return as RGB string."""
-    try:
-        img = Image.open(io.BytesIO(image_data))
-        img = img.convert('RGB')
-        # Resize to 1x1 to get the average color (very fast and effective for lighting)
-        img = img.resize((1, 1), resample=Image.Resampling.BOX)
-        rgb = img.getpixel((0, 0))
-        return {"r": rgb[0], "g": rgb[1], "b": rgb[2]}
-    except Exception as e:
-        logger.error(f"Error extracting color: {e}")
-        return None
-
-async def publish_color(image_url, opts):
-    """Fetch image, extract color and publish to MQTT."""
-    if not image_url or not opts.get("mqtt_enabled"):
-        return
-
-    try:
-        target_url = image_url
-        if image_url.startswith("/api/proxy"):
-            parsed = urlparse(image_url)
-            target_url = parse_qs(parsed.query).get('url', [None])[0]
-        
-        if not target_url:
-            return
-
-        async with aiohttp.ClientSession() as session:
-            if target_url.startswith("/"):
-                full_url = f"{HA_URL.replace('/api', '')}{target_url}"
-            else:
-                full_url = target_url
-
-            async with session.get(full_url, headers={"Authorization": f"Bearer {HA_TOKEN}"}) as resp:
-                if resp.status == 200:
-                    data = await resp.read()
-                    color = extract_dominant_color(data)
-                    if color:
-                        client = get_mqtt_client(opts)
-                        if client:
-                            topic = opts.get("mqtt_topic", "synclyrics/dominant_color")
-                            client.publish(topic, json.dumps(color), retain=True)
-                            logger.info(f"Published color {color} to {topic}")
-    except Exception as e:
-        logger.error(f"Error in publish_color: {e}")
 
 logger.info("SyncLyrics Backend starting...")
 
@@ -135,6 +59,7 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        # Send initial state if available
         if current_state["song"]:
             await websocket.send_text(json.dumps({
                 "type": "update",
@@ -207,6 +132,8 @@ async def monitor_ha_state():
     while True:
         try:
             current_options = get_options()
+            
+            # Detect option change
             options_changed = last_options is not None and current_options != last_options
             last_options = current_options
 
@@ -228,6 +155,7 @@ async def monitor_ha_state():
                         raw_pos = attr.get("media_position")
                         updated_at = attr.get("media_position_updated_at")
                         
+                        # Compensate for drift
                         current_pos = raw_pos
                         if state == "playing" and raw_pos is not None and updated_at:
                             diff = time.time() - parse_ha_time(updated_at)
@@ -245,11 +173,10 @@ async def monitor_ha_state():
                             
                             lyrics = await fetch_lyrics(artist, title, int(attr.get("media_duration", 0)))
                             
+                            # Local proxy for images if accessed via IP
                             image_url = attr.get("entity_picture")
                             if image_url:
-                                proxy_url = f"/api/proxy?url={image_url}"
-                                asyncio.create_task(publish_color(proxy_url, current_options))
-                                image_url = proxy_url
+                                image_url = f"/api/proxy?url={image_url}"
 
                             song_info = {
                                 "title": title,
@@ -262,6 +189,7 @@ async def monitor_ha_state():
                                 "lyrics": lyrics
                             }
                             
+                            # Update global state for new connections
                             current_state["song"] = song_info
                             current_state["options"] = current_options
                             
@@ -270,6 +198,7 @@ async def monitor_ha_state():
                             last_broadcast_state = state
                             await manager.broadcast(json.dumps({"type": "update", "data": song_info, "options": current_options}))
                         else:
+                            # Song is the same, check for seek or state change
                             time_passed = 1.0 
                             expected_pos = last_broadcast_pos + time_passed if last_broadcast_state == "playing" else last_broadcast_pos
                             
@@ -277,6 +206,7 @@ async def monitor_ha_state():
                             is_state_change = state != last_broadcast_state
                             
                             if is_seeking or is_state_change:
+                                # Update position in stored state too
                                 if current_state["song"]:
                                     current_state["song"]["position"] = current_pos
                                     current_state["song"]["state"] = state
@@ -308,6 +238,8 @@ async def proxy_image(url: str):
     """Proxy image requests to Home Assistant."""
     if not url:
         return {"error": "No URL provided"}
+    
+    # Ensure the URL is from HA
     if not url.startswith("/"):
         return {"error": "Invalid URL"}
 
