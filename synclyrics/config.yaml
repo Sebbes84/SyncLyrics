@@ -37,7 +37,7 @@ options:
   cinema_screen_height: 60
   cinema_screen_opacity: 70
   mqtt_enabled: false
-  mqtt_topic: "synclyrics/dominant_color"
+  mqtt_topic: "spotify/overlay/color"
   mqtt_host: "core-mosquitto"
   mqtt_port: 1883
   mqtt_user: ""
