@@ -11,13 +11,19 @@ RUN \
     apk add --no-cache \
         python3 \
         py3-pip \
+        jpeg-dev \
+        zlib-dev \
+        build-base \
+        python3-dev \
     && pip3 install --no-cache-dir --break-system-packages \
         fastapi \
         "uvicorn[standard]" \
         websockets \
         aiohttp \
         requests \
-        syncedlyrics
+        syncedlyrics \
+        Pillow \
+        paho-mqtt
 
 # Copy data for add-on
 COPY . /app
