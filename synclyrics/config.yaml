@@ -1,5 +1,5 @@
 name: "SyncLyrics"
-version: "1.2.0"
+version: "1.1.1"
 slug: "synclyrics"
 description: "Fetch, store, and display synced lyrics for your Spotify player."
 url: "https://github.com/Sebbes84/SyncLyrics"
@@ -36,12 +36,6 @@ options:
   cinema_screen_width: 80
   cinema_screen_height: 60
   cinema_screen_opacity: 70
-  mqtt_enabled: false
-  mqtt_topic: "spotify/overlay/color"
-  mqtt_host: "core-mosquitto"
-  mqtt_port: 1883
-  mqtt_user: ""
-  mqtt_password: ""
 schema:
   spotify_entity: str
   cache_size_mb: int
@@ -57,9 +51,3 @@ schema:
   cinema_screen_width: int
   cinema_screen_height: int
   cinema_screen_opacity: int
-  mqtt_enabled: bool
-  mqtt_topic: str
-  mqtt_host: str
-  mqtt_port: int
-  mqtt_user: str?
-  mqtt_password: password?
