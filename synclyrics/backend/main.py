@@ -48,7 +48,7 @@ def get_options():
         "game_mode_enabled": False,
         "lyric_providers": ["lrclib", "musixmatch", "genius"],
         "mqtt_enabled": False,
-        "mqtt_topic": "synclyrics/dominant_color",
+        "mqtt_topic": "spotify/overlay/color",
         "mqtt_host": "core-mosquitto",
         "mqtt_port": 1883
     }
@@ -85,11 +85,10 @@ def extract_dominant_color(image_data):
     try:
         img = Image.open(io.BytesIO(image_data))
         img = img.convert('RGB')
-        img.thumbnail((100, 100))
-        # Use quantize to get the most frequent color
-        paletted = img.quantize(colors=1)
-        dominant_rgb = paletted.convert('RGB').getpixel((0, 0))
-        return {"r": dominant_rgb[0], "g": dominant_rgb[1], "b": dominant_rgb[2]}
+        # Resize to 1x1 to get the average color (very fast and effective for lighting)
+        img = img.resize((1, 1), resample=Image.Resampling.BOX)
+        rgb = img.getpixel((0, 0))
+        return {"r": rgb[0], "g": rgb[1], "b": rgb[2]}
     except Exception as e:
         logger.error(f"Error extracting color: {e}")
         return None
