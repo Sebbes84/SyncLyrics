@@ -73,14 +73,6 @@ function updateSong(data, options) {
     // Parse Lyrics
     if (rawLyrics !== data.lyrics) {
         rawLyrics = data.lyrics;
-        // Set initial toggle state if not already set or on song change
-        if (options.translate_lyrics !== undefined) {
-             // If backend says translate, we should probably show it by default
-             // unless we want to keep the user's manual toggle.
-             // Let's align with the backend option but allow the toggle to work.
-             showTranslation = options.translate_lyrics;
-             document.getElementById('translation-toggle').checked = showTranslation;
-        }
         parseLRC(rawLyrics);
     }
 

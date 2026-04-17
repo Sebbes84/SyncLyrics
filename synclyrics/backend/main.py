@@ -109,19 +109,27 @@ def translate_lrc(lrc_text, target_lang="fr"):
         
     try:
         # Detect language to decide if we should skip translation
-        sample = "\n".join(original_texts[:min(len(original_texts), 20)])
+        # Use more lines and skip empty/short lines for better detection
+        sample_texts = [t for t in original_texts if len(t) > 3]
+        sample = "\n".join(sample_texts[:min(len(sample_texts), 30)])
+        
+        if not sample:
+            sample = "\n".join(original_texts[:min(len(original_texts), 15)])
+
         try:
             from langdetect import detect_langs
             probs = detect_langs(sample)
-            # If the most likely language is the target language and it's very certain (>90%), skip.
-            # Otherwise, let Google handle it with 'auto' detection.
-            if probs and probs[0].lang == target_lang and probs[0].prob > 0.9:
-                logger.info(f"Lyrics appear to be already in {target_lang} (confidence {probs[0].prob}), skipping.")
+            logger.info(f"Language detection probabilities for '{sample[:50]}...': {probs}")
+            
+            # If the most likely language is French and it's extremely certain (>98%), skip.
+            # We use a very high threshold because misidentifying German/English as French is common for short lyrics.
+            if probs and probs[0].lang == target_lang and probs[0].prob > 0.98:
+                logger.info(f"Lyrics appear to be already in {target_lang} (confidence {probs[0].prob}), skipping translation.")
                 return lrc_text
         except Exception as e:
             logger.warning(f"Language detection skip-check failed: {e}")
             
-        logger.info(f"Translating lyrics (multi-language support enabled)")
+        logger.info(f"Translating lyrics for song (detected as {probs[0].lang if 'probs' in locals() and probs else 'unknown'})...")
         
         # Always use 'auto' for the actual translation to handle mixed languages
         translator = GoogleTranslator(source='auto', target=target_lang)
@@ -133,7 +141,8 @@ def translate_lrc(lrc_text, target_lang="fr"):
             if current_length + len(text) > 4000:
                 chunk_text = "\n".join(current_chunk)
                 translated_chunk = translator.translate(chunk_text)
-                translated_lines.extend(translated_chunk.strip().split('\n'))
+                if translated_chunk:
+                    translated_lines.extend(translated_chunk.strip().split('\n'))
                 current_chunk = [text]
                 current_length = len(text)
             else:
@@ -143,7 +152,8 @@ def translate_lrc(lrc_text, target_lang="fr"):
         if current_chunk:
             chunk_text = "\n".join(current_chunk)
             translated_chunk = translator.translate(chunk_text)
-            translated_lines.extend(translated_chunk.strip().split('\n'))
+            if translated_chunk:
+                translated_lines.extend(translated_chunk.strip().split('\n'))
         
         # Reconstruct with "Original | Translation" 
         new_lines = list(lines)
