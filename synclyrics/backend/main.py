@@ -150,15 +150,11 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
     
     cache_path = os.path.join(CACHE_DIR, filename)
 
-    if os.path.exists(cache_path):
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-
     current_options = get_options()
     should_translate = current_options.get("translate_lyrics", False)
     target_lang = current_options.get("target_language", "fr")
     
-    # Check for translated cache if needed
+    # 1. Check for translated cache if requested
     if should_translate:
         trans_filename = f"{artist}_{title}_{target_lang}".replace(" ", "_").lower() + ".lrc"
         trans_cache_path = os.path.join(CACHE_DIR, trans_filename)
@@ -166,39 +162,45 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
             with open(trans_cache_path, 'r', encoding='utf-8') as f:
                 return f.read()
 
-    def search():
-        try:
-            mx_token = current_options.get("musixmatch_token")
-            gn_token = current_options.get("genius_token")
-            if mx_token: os.environ["MUSIXMATCH_TOKEN"] = mx_token
-            if gn_token: os.environ["GENIUS_ACCESS_TOKEN"] = gn_token
-            return syncedlyrics.search(f"{artist} - {title}")
-        except Exception as e:
-            logger.error(f"Error in syncedlyrics search: {e}")
-            return None
+    # 2. Check for original cache
+    lyrics = None
+    if os.path.exists(cache_path):
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            lyrics = f.read()
+    
+    # 3. If not cached, fetch from internet
+    if not lyrics:
+        def search():
+            try:
+                mx_token = current_options.get("musixmatch_token")
+                gn_token = current_options.get("genius_token")
+                if mx_token: os.environ["MUSIXMATCH_TOKEN"] = mx_token
+                if gn_token: os.environ["GENIUS_ACCESS_TOKEN"] = gn_token
+                return syncedlyrics.search(f"{artist} - {title}")
+            except Exception as e:
+                logger.error(f"Error in syncedlyrics search: {e}")
+                return None
 
-    loop = asyncio.get_event_loop()
-    lyrics = await loop.run_in_executor(None, search)
-
-    if lyrics:
-        # Save original if not already cached
-        if not os.path.exists(cache_path):
+        loop = asyncio.get_event_loop()
+        lyrics = await loop.run_in_executor(None, search)
+        
+        if lyrics:
             with open(cache_path, 'w', encoding='utf-8') as f:
                 f.write(lyrics)
+
+    # 4. Handle translation if needed (either for new or cached lyrics)
+    if lyrics and should_translate:
+        loop = asyncio.get_event_loop()
+        translated_lyrics = await loop.run_in_executor(None, lambda: translate_lrc(lyrics, target_lang))
         
-        # Handle translation
-        if should_translate:
-            loop = asyncio.get_event_loop()
-            translated_lyrics = await loop.run_in_executor(None, lambda: translate_lrc(lyrics, target_lang))
+        # Cache the translated version
+        trans_filename = f"{artist}_{title}_{target_lang}".replace(" ", "_").lower() + ".lrc"
+        trans_cache_path = os.path.join(CACHE_DIR, trans_filename)
+        with open(trans_cache_path, 'w', encoding='utf-8') as f:
+            f.write(translated_lyrics)
+        return translated_lyrics
             
-            # Cache the translated version
-            trans_filename = f"{artist}_{title}_{target_lang}".replace(" ", "_").lower() + ".lrc"
-            trans_cache_path = os.path.join(CACHE_DIR, trans_filename)
-            with open(trans_cache_path, 'w', encoding='utf-8') as f:
-                f.write(translated_lyrics)
-            return translated_lyrics
-            
-        return lyrics
+    return lyrics
     return None
 
 def parse_ha_time(time_str):
