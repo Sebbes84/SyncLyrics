@@ -10,6 +10,7 @@ let offset = 0; // Manual offset in seconds
 let autoOffset = 0.5; // Default compensation for network lag
 let gameMode = false;
 let showTranslation = false;
+let duoMode = false;
 
 function connectWS() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -42,6 +43,8 @@ function updateSong(data, options) {
     // Initial game mode state from config
     gameMode = options.game_mode_enabled;
     document.getElementById('game-mode-toggle').checked = gameMode;
+    document.getElementById('duo-mode-toggle').checked = duoMode;
+    document.getElementById('translation-toggle').checked = showTranslation;
 
     // Background
     const bg = document.getElementById('background-layer');
@@ -103,6 +106,16 @@ function toggleTranslation() {
     parseLRC(rawLyrics);
 }
 
+function toggleDuoMode() {
+    duoMode = document.getElementById('duo-mode-toggle').checked;
+    console.log("[DEBUG] Duo Mode Toggled:", duoMode);
+
+    // Reset dataset to force scroll on next tick
+    document.querySelectorAll('.lyric-line').forEach(el => delete el.dataset.lastActiveIndex);
+
+    parseLRC(rawLyrics);
+}
+
 function parseLRC(lrcText) {
     if (!lrcText) {
         currentLyrics = [{ time: 0, text: "Lyrics not found" }];
@@ -118,8 +131,17 @@ function parseLRC(lrcText) {
         const match = timeRegex.exec(line);
         if (match) {
             const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 100;
-            let text = line.replace(timeRegex, '').trim();
+            let rawText = line.replace(timeRegex, '').trim();
 
+            // Extract Singer Name
+            let singer = "";
+            const singerMatch = rawText.match(/@(.*?)@/);
+            if (singerMatch) {
+                singer = singerMatch[1];
+                rawText = rawText.replace(/@.*?@/, '').trim();
+            }
+
+            let text = rawText;
             let translation = "";
             if (text.includes(' | ')) {
                 const parts = text.split(' | ');
@@ -138,6 +160,7 @@ function parseLRC(lrcText) {
 
             currentLyrics.push({ 
                 time, 
+                singer,
                 text, 
                 translation,
                 isMasked: text.includes('<span class="masked">') 
@@ -149,7 +172,17 @@ function parseLRC(lrcText) {
         currentLyrics = lines
             .filter(l => l.trim().length > 0)
             .map((line, i) => {
-                let text = line;
+                let rawText = line;
+
+                // Extract Singer Name
+                let singer = "";
+                const singerMatch = rawText.match(/@(.*?)@/);
+                if (singerMatch) {
+                    singer = singerMatch[1];
+                    rawText = rawText.replace(/@.*?@/, '').trim();
+                }
+
+                let text = rawText;
                 let translation = "";
                 if (text.includes(' | ')) {
                     const parts = text.split(' | ');
@@ -167,6 +200,7 @@ function parseLRC(lrcText) {
 
                 return {
                     time: -1,
+                    singer: singer,
                     text: wrappedText,
                     translation: wrappedTrans
                 };
@@ -218,7 +252,10 @@ function renderLyrics() {
     const container = document.getElementById('lyrics-container');
     container.innerHTML = currentLyrics.map((line, i) => `
         <div class="lyric-line ${line.isMasked ? 'hidden-word' : ''}" id="line-${i}">
-            <div class="original-line">${line.text}</div>
+            <div class="original-line">
+                ${(duoMode && line.singer) ? `<span class="singer-tag">${line.singer}</span>` : ''}
+                ${line.text}
+            </div>
             ${(showTranslation && line.translation) ? `<div class="translation-line">${line.translation}</div>` : ''}
         </div>
     `).join('');

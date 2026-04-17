@@ -187,6 +187,19 @@ header h2 {
     display: block;
 }
 
+.singer-tag {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 10px;
+    vertical-align: middle;
+    color: var(--primary-color);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
 @media (max-width: 600px) {
     .lyric-line {
         font-size: 1.4rem;
