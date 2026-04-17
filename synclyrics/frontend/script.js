@@ -71,10 +71,16 @@ function updateSong(data, options) {
     document.getElementById('footer').classList.toggle('visible', options.show_progress_bar);
 
     // Parse Lyrics
-    if (rawLyrics !== data.lyrics || showTranslation !== options.translate_lyrics) {
-        showTranslation = options.translate_lyrics;
-        document.getElementById('translation-toggle').checked = showTranslation;
+    if (rawLyrics !== data.lyrics) {
         rawLyrics = data.lyrics;
+        // Set initial toggle state if not already set or on song change
+        if (options.translate_lyrics !== undefined) {
+             // If backend says translate, we should probably show it by default
+             // unless we want to keep the user's manual toggle.
+             // Let's align with the backend option but allow the toggle to work.
+             showTranslation = options.translate_lyrics;
+             document.getElementById('translation-toggle').checked = showTranslation;
+        }
         parseLRC(rawLyrics);
     }
 
@@ -85,12 +91,23 @@ function updateSong(data, options) {
     syncPosition({ position: data.position, state: data.state });
 }
 
+function toggleGameMode() {
+    gameMode = document.getElementById('game-mode-toggle').checked;
+    console.log("[DEBUG] Game Mode Toggled:", gameMode);
+
+    // Reset dataset to force scroll on next tick
+    document.querySelectorAll('.lyric-line').forEach(el => delete el.dataset.lastActiveIndex);
+
+    parseLRC(rawLyrics);
+}
+
 function toggleTranslation() {
     showTranslation = document.getElementById('translation-toggle').checked;
     console.log("[DEBUG] Translation Toggled:", showTranslation);
     
-    // We can't just re-parse if the backend hasn't provided the translation yet
-    // But if rawLyrics already contains " | ", we can re-parse locally
+    // Reset dataset to force scroll on next tick
+    document.querySelectorAll('.lyric-line').forEach(el => delete el.dataset.lastActiveIndex);
+    
     parseLRC(rawLyrics);
 }
 
@@ -112,7 +129,7 @@ function parseLRC(lrcText) {
             let text = line.replace(timeRegex, '').trim();
 
             let translation = "";
-            if (showTranslation && text.includes(' | ')) {
+            if (text.includes(' | ')) {
                 const parts = text.split(' | ');
                 text = parts[0];
                 translation = parts[1];
@@ -139,11 +156,27 @@ function parseLRC(lrcText) {
     if (currentLyrics.length === 0 && lines.some(l => l.trim().length > 0)) {
         currentLyrics = lines
             .filter(l => l.trim().length > 0)
-            .map((text, i) => {
+            .map((line, i) => {
+                let text = line;
+                let translation = "";
+                if (text.includes(' | ')) {
+                    const parts = text.split(' | ');
+                    text = parts[0];
+                    translation = parts[1];
+                }
+
                 let wrappedText = wrapText(text, 40);
+                let wrappedTrans = translation ? wrapText(translation, 45) : "";
+
+                if (gameMode && text.length > 10) {
+                    wrappedText = maskWords(wrappedText);
+                    if (wrappedTrans) wrappedTrans = maskWords(wrappedTrans);
+                }
+
                 return {
                     time: -1,
-                    text: gameMode && text.length > 10 ? maskWords(wrappedText) : wrappedText
+                    text: wrappedText,
+                    translation: wrappedTrans
                 };
             });
     }
@@ -194,7 +227,7 @@ function renderLyrics() {
     container.innerHTML = currentLyrics.map((line, i) => `
         <div class="lyric-line ${line.isMasked ? 'hidden-word' : ''}" id="line-${i}">
             <div class="original-line">${line.text}</div>
-            ${line.translation ? `<div class="translation-line">${line.translation}</div>` : ''}
+            ${(showTranslation && line.translation) ? `<div class="translation-line">${line.translation}</div>` : ''}
         </div>
     `).join('');
 }
