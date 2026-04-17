@@ -108,26 +108,42 @@ def translate_lrc(lrc_text, target_lang="fr"):
         return lrc_text
         
     try:
-        # Detect language (using first few lines for efficiency)
-        sample = "\n".join(original_texts[:5])
-        source_lang = detect(sample)
-        
-        if source_lang == target_lang:
-            logger.info(f"Language detected as {source_lang}, skipping translation to {target_lang}")
-            return lrc_text
+        # Detect language to decide if we should skip translation
+        sample = "\n".join(original_texts[:min(len(original_texts), 20)])
+        try:
+            from langdetect import detect_langs
+            probs = detect_langs(sample)
+            # If the most likely language is the target language and it's very certain (>90%), skip.
+            # Otherwise, let Google handle it with 'auto' detection.
+            if probs and probs[0].lang == target_lang and probs[0].prob > 0.9:
+                logger.info(f"Lyrics appear to be already in {target_lang} (confidence {probs[0].prob}), skipping.")
+                return lrc_text
+        except Exception as e:
+            logger.warning(f"Language detection skip-check failed: {e}")
             
-        logger.info(f"Translating lyrics from {source_lang} to {target_lang}")
+        logger.info(f"Translating lyrics (multi-language support enabled)")
         
-        # Split into chunks of 4500 chars to avoid API limits (Google Translate limit is often 5000)
-        full_text = "\n".join(original_texts)
-        chunks = [full_text[i:i+4500] for i in range(0, len(full_text), 4500)]
-        
+        # Always use 'auto' for the actual translation to handle mixed languages
         translator = GoogleTranslator(source='auto', target=target_lang)
-        translated_text = ""
-        for chunk in chunks:
-            translated_text += translator.translate(chunk) + "\n"
-            
-        translated_lines = translated_text.strip().split('\n')
+        translated_lines = []
+        current_chunk = []
+        current_length = 0
+        
+        for text in original_texts:
+            if current_length + len(text) > 4000:
+                chunk_text = "\n".join(current_chunk)
+                translated_chunk = translator.translate(chunk_text)
+                translated_lines.extend(translated_chunk.strip().split('\n'))
+                current_chunk = [text]
+                current_length = len(text)
+            else:
+                current_chunk.append(text)
+                current_length += len(text) + 1
+        
+        if current_chunk:
+            chunk_text = "\n".join(current_chunk)
+            translated_chunk = translator.translate(chunk_text)
+            translated_lines.extend(translated_chunk.strip().split('\n'))
         
         # Reconstruct with "Original | Translation" 
         new_lines = list(lines)
