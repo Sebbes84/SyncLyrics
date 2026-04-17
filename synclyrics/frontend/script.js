@@ -40,8 +40,11 @@ function updateSong(data, options) {
 
     duration = data.duration || 0;
 
-    // Initial game mode state from config
+    // Initial states from config
     gameMode = options.game_mode_enabled;
+    duoMode = options.duo_mode_enabled !== undefined ? options.duo_mode_enabled : duoMode;
+    showTranslation = options.translate_lyrics !== undefined ? options.translate_lyrics : showTranslation;
+
     document.getElementById('game-mode-toggle').checked = gameMode;
     document.getElementById('duo-mode-toggle').checked = duoMode;
     document.getElementById('translation-toggle').checked = showTranslation;
@@ -125,28 +128,29 @@ function parseLRC(lrcText) {
 
     const lines = lrcText.split('\n');
     const timeRegex = /\[(\d+):(\d+)\.(\d+)\]/;
-    currentLyrics = [];
-
+    let lastSinger = "";
     lines.forEach(line => {
         const match = timeRegex.exec(line);
         if (match) {
             const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 100;
             let rawText = line.replace(timeRegex, '').trim();
 
-            // Extract Singer Name
-            let singer = "";
+            // Extract Singer Name - Supports @Singer@ and keeps it "sticky"
             const singerMatch = rawText.match(/@(.*?)@/);
             if (singerMatch) {
-                singer = singerMatch[1];
-                rawText = rawText.replace(/@.*?@/, '').trim();
+                lastSinger = singerMatch[1].trim();
+                rawText = rawText.replace(/@.*?@/g, '').trim();
             }
 
             let text = rawText;
             let translation = "";
             if (text.includes(' | ')) {
                 const parts = text.split(' | ');
-                text = parts[0];
-                translation = parts[1];
+                text = parts[0].trim();
+                translation = parts[1].trim();
+                
+                // Also clean tags from translation if they were duplicated by translator
+                translation = translation.replace(/@.*?@/g, '').trim();
             }
 
             // Automatic wrapping for very long lines
@@ -160,7 +164,7 @@ function parseLRC(lrcText) {
 
             currentLyrics.push({ 
                 time, 
-                singer,
+                singer: lastSinger, // Now uses the inherited singer
                 text, 
                 translation,
                 isMasked: text.includes('<span class="masked">') 
@@ -169,25 +173,26 @@ function parseLRC(lrcText) {
     });
 
     if (currentLyrics.length === 0 && lines.some(l => l.trim().length > 0)) {
+        let currentSinger = "";
         currentLyrics = lines
             .filter(l => l.trim().length > 0)
             .map((line, i) => {
                 let rawText = line;
 
                 // Extract Singer Name
-                let singer = "";
                 const singerMatch = rawText.match(/@(.*?)@/);
                 if (singerMatch) {
-                    singer = singerMatch[1];
-                    rawText = rawText.replace(/@.*?@/, '').trim();
+                    currentSinger = singerMatch[1].trim();
+                    rawText = rawText.replace(/@.*?@/g, '').trim();
                 }
 
                 let text = rawText;
                 let translation = "";
                 if (text.includes(' | ')) {
                     const parts = text.split(' | ');
-                    text = parts[0];
-                    translation = parts[1];
+                    text = parts[0].trim();
+                    translation = parts[1].trim();
+                    translation = translation.replace(/@.*?@/g, '').trim();
                 }
 
                 let wrappedText = wrapText(text, 40);
@@ -200,7 +205,7 @@ function parseLRC(lrcText) {
 
                 return {
                     time: -1,
-                    singer: singer,
+                    singer: currentSinger,
                     text: wrappedText,
                     translation: wrappedTrans
                 };

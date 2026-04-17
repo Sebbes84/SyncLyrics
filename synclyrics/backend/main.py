@@ -46,6 +46,7 @@ def get_options():
         "show_progress_bar": True,
         "show_background": True,
         "game_mode_enabled": False,
+        "duo_mode_enabled": False,
         "lyric_providers": ["lrclib", "musixmatch", "genius"],
         "translate_lyrics": False,
         "target_language": "fr"

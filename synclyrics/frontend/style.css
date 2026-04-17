@@ -188,16 +188,24 @@ header h2 {
 }
 
 .singer-tag {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-right: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3px 10px;
+    border-radius: 6px;
+    margin-right: 12px;
     vertical-align: middle;
     color: var(--primary-color);
-    font-weight: 400;
-    letter-spacing: 0.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.singer-tag:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
 }
 
 @media (max-width: 600px) {

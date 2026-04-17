@@ -28,6 +28,7 @@ options:
   show_progress_bar: true
   show_background: true
   game_mode_enabled: false
+  duo_mode_enabled: false
   lyric_providers: ["lrclib", "musixmatch", "genius"]
   musixmatch_token: ""
   genius_token: ""
@@ -45,6 +46,7 @@ schema:
   show_progress_bar: bool
   show_background: bool
   game_mode_enabled: bool
+  duo_mode_enabled: bool
   lyric_providers: list(str)
   musixmatch_token: str?
   genius_token: str?
