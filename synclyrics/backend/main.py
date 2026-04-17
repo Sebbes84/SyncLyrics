@@ -213,6 +213,7 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
         if lyrics:
             with open(cache_path, 'w', encoding='utf-8') as f:
                 f.write(lyrics)
+            cleanup_cache()
 
     # 4. Handle translation if needed (either for new or cached lyrics)
     if lyrics and should_translate:
@@ -224,10 +225,59 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
         trans_cache_path = os.path.join(CACHE_DIR, trans_filename)
         with open(trans_cache_path, 'w', encoding='utf-8') as f:
             f.write(translated_lyrics)
+        cleanup_cache()
         return translated_lyrics
             
     return lyrics
-    return None
+
+def cleanup_cache():
+    """Ensure the cache folder stays within the configured limit."""
+    try:
+        current_options = get_options()
+        # Convert MB to bytes
+        limit_bytes = current_options.get("cache_size_mb", 100) * 1024 * 1024
+        
+        if not os.path.exists(CACHE_DIR):
+            return
+
+        # Get list of files with their size and modification time
+        files = []
+        total_size = 0
+        for f in os.listdir(CACHE_DIR):
+            if f.endswith(".lrc"):
+                path = os.path.join(CACHE_DIR, f)
+                try:
+                    stats = os.stat(path)
+                    files.append({
+                        "path": path,
+                        "size": stats.st_size,
+                        "mtime": stats.st_mtime
+                    })
+                    total_size += stats.st_size
+                except Exception:
+                    continue
+        
+        if total_size <= limit_bytes:
+            return
+            
+        logger.info(f"Cache cleanup started. Current size: {total_size / 1024 / 1024:.2f}MB, Limit: {limit_bytes / 1024 / 1024:.2f}MB")
+        
+        # Sort files by modification time (oldest first)
+        files.sort(key=lambda x: x["mtime"])
+        
+        for f in files:
+            try:
+                os.remove(f["path"])
+                total_size -= f["size"]
+                logger.info(f"Removed cached lyric: {os.path.basename(f['path'])}")
+                if total_size <= limit_bytes:
+                    break
+            except Exception as e:
+                logger.error(f"Failed to remove cached file {f['path']}: {e}")
+                
+        logger.info(f"Cache cleanup finished. New size: {total_size / 1024 / 1024:.2f}MB")
+    except Exception as e:
+        logger.error(f"Error during cache cleanup: {e}")
 
 def parse_ha_time(time_str):
     """Parse HA ISO time string to unix timestamp."""

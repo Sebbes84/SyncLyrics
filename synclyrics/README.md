@@ -8,8 +8,13 @@
 ## 🚀 Fonctionnalités
 
 - **Synchronisation temps réel** : Les paroles défilent et se surlignent en suivant précisément votre musique.
+- **🌍 Traduction Automatique** : Traduction intelligente des paroles étrangères vers le français (activable en option).
+    - Support des chansons multilingues.
+    - Affichage bilingue (Original / Traduction en italique).
 - **Multi-sources** : Récupération intelligente sur **LRCLIB**, **Musixmatch** et **Genius**.
-- **Cache Local** : Les paroles sont stockées par l'add-on pour un accès instantané ultérieur.
+- **💾 Gestion du Cache local** :
+    - Stockage automatique des paroles (Originales et Traduites) pour un accès instantané hors-ligne.
+    - **Nettoyage automatique** : Limitation de l'espace disque configurable (ex: 100 Mo) avec suppression des fichiers les plus anciens.
 - **Interface Premium** :
     - Fond transparent pour intégration dans vos dashboards.
     - Animations fluides.
@@ -17,6 +22,7 @@
     - Barre de progression et métadonnées (Artiste/Titre).
 - **Mode Jeu** : Un mode "Trouve les paroles" pour masquer certains mots et s'amuser.
 - **Ajustement d'Offset** : Possibilité de décaler la synchro manuellement (+/-) pour compenser la latence réseau.
+- **Menu Paramètres** : Une interface intégrée pour activer/désactiver les options (Traduction, Masquage, Jeu) à la volée.
 
 ## 🛠 Installation
 
