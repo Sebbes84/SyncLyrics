@@ -12,6 +12,9 @@ import aiohttp
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+import re
+from deep_translator import GoogleTranslator
+from langdetect import detect
 
 # Configuration
 OPTIONS_PATH = "/data/options.json"
@@ -43,7 +46,9 @@ def get_options():
         "show_progress_bar": True,
         "show_background": True,
         "game_mode_enabled": False,
-        "lyric_providers": ["lrclib", "musixmatch", "genius"]
+        "lyric_providers": ["lrclib", "musixmatch", "genius"],
+        "translate_lyrics": False,
+        "target_language": "fr"
     }
 
 options = get_options()
@@ -80,6 +85,63 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+def translate_lrc(lrc_text, target_lang="fr"):
+    """Translate LRC text to target language, preserving structure."""
+    if not lrc_text:
+        return lrc_text
+        
+    lines = lrc_text.split('\n')
+    original_texts = []
+    line_indices = [] # Stores which lines have text to translate
+    
+    time_regex = r"\[\d+:\d+\.\d+\]"
+    
+    for i, line in enumerate(lines):
+        match = re.search(time_regex, line)
+        if match:
+            text = re.sub(time_regex, "", line).strip()
+            if text and not text.startswith('['): # Avoid metadata lines
+                original_texts.append(text)
+                line_indices.append(i)
+            
+    if not original_texts:
+        return lrc_text
+        
+    try:
+        # Detect language (using first few lines for efficiency)
+        sample = "\n".join(original_texts[:5])
+        source_lang = detect(sample)
+        
+        if source_lang == target_lang:
+            logger.info(f"Language detected as {source_lang}, skipping translation to {target_lang}")
+            return lrc_text
+            
+        logger.info(f"Translating lyrics from {source_lang} to {target_lang}")
+        
+        # Split into chunks of 4500 chars to avoid API limits (Google Translate limit is often 5000)
+        full_text = "\n".join(original_texts)
+        chunks = [full_text[i:i+4500] for i in range(0, len(full_text), 4500)]
+        
+        translator = GoogleTranslator(source='auto', target=target_lang)
+        translated_text = ""
+        for chunk in chunks:
+            translated_text += translator.translate(chunk) + "\n"
+            
+        translated_lines = translated_text.strip().split('\n')
+        
+        # Reconstruct with "Original | Translation" 
+        new_lines = list(lines)
+        for i, original_idx in enumerate(line_indices):
+            if i < len(translated_lines):
+                translation = translated_lines[i].strip()
+                if translation and translation.lower() != original_texts[i].lower():
+                    new_lines[original_idx] = f"{lines[original_idx]} | {translation}"
+        
+        return "\n".join(new_lines)
+    except Exception as e:
+        logger.error(f"Translation failed: {e}")
+        return lrc_text
+
 async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
     """Fetch lyrics using syncedlyrics library."""
     filename = f"{artist}_{title}".replace(" ", "_").lower() + ".lrc"
@@ -93,7 +155,17 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
             return f.read()
 
     current_options = get_options()
+    should_translate = current_options.get("translate_lyrics", False)
+    target_lang = current_options.get("target_language", "fr")
     
+    # Check for translated cache if needed
+    if should_translate:
+        trans_filename = f"{artist}_{title}_{target_lang}".replace(" ", "_").lower() + ".lrc"
+        trans_cache_path = os.path.join(CACHE_DIR, trans_filename)
+        if os.path.exists(trans_cache_path):
+            with open(trans_cache_path, 'r', encoding='utf-8') as f:
+                return f.read()
+
     def search():
         try:
             mx_token = current_options.get("musixmatch_token")
@@ -109,8 +181,23 @@ async def fetch_lyrics(artist: str, title: str, duration: int) -> Optional[str]:
     lyrics = await loop.run_in_executor(None, search)
 
     if lyrics:
-        with open(cache_path, 'w', encoding='utf-8') as f:
-            f.write(lyrics)
+        # Save original if not already cached
+        if not os.path.exists(cache_path):
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(lyrics)
+        
+        # Handle translation
+        if should_translate:
+            loop = asyncio.get_event_loop()
+            translated_lyrics = await loop.run_in_executor(None, lambda: translate_lrc(lyrics, target_lang))
+            
+            # Cache the translated version
+            trans_filename = f"{artist}_{title}_{target_lang}".replace(" ", "_").lower() + ".lrc"
+            trans_cache_path = os.path.join(CACHE_DIR, trans_filename)
+            with open(trans_cache_path, 'w', encoding='utf-8') as f:
+                f.write(translated_lyrics)
+            return translated_lyrics
+            
         return lyrics
     return None
 

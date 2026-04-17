@@ -29,4 +29,3 @@ Vérifiez que l'entité Spotify est bien en cours de lecture dans Home Assistant
 
 ### Les paroles ne s'affichent pas du tout
 L'add-on utilise par défaut **LRCLIB** (gratuit). Pour de meilleurs résultats, vous pouvez ajouter vos jetons **Musixmatch** ou **Genius** dans la configuration. Certaines chansons très récentes ou très rares peuvent ne pas être répertoriées sur toutes les plateformes.
-

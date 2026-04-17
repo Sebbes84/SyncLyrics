@@ -9,6 +9,7 @@ let lastUpdate = 0;
 let offset = 0; // Manual offset in seconds
 let autoOffset = 0.5; // Default compensation for network lag
 let gameMode = false;
+let showTranslation = false;
 
 function connectWS() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -70,7 +71,9 @@ function updateSong(data, options) {
     document.getElementById('footer').classList.toggle('visible', options.show_progress_bar);
 
     // Parse Lyrics
-    if (rawLyrics !== data.lyrics) {
+    if (rawLyrics !== data.lyrics || showTranslation !== options.translate_lyrics) {
+        showTranslation = options.translate_lyrics;
+        document.getElementById('translation-toggle').checked = showTranslation;
         rawLyrics = data.lyrics;
         parseLRC(rawLyrics);
     }
@@ -82,13 +85,12 @@ function updateSong(data, options) {
     syncPosition({ position: data.position, state: data.state });
 }
 
-function toggleGameMode() {
-    gameMode = document.getElementById('game-mode-toggle').checked;
-    console.log("[DEBUG] Game Mode Toggled:", gameMode);
-
-    // Reset dataset to force scroll on next tick
-    document.querySelectorAll('.lyric-line').forEach(el => delete el.dataset.lastActiveIndex);
-
+function toggleTranslation() {
+    showTranslation = document.getElementById('translation-toggle').checked;
+    console.log("[DEBUG] Translation Toggled:", showTranslation);
+    
+    // We can't just re-parse if the backend hasn't provided the translation yet
+    // But if rawLyrics already contains " | ", we can re-parse locally
     parseLRC(rawLyrics);
 }
 
@@ -109,14 +111,28 @@ function parseLRC(lrcText) {
             const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 100;
             let text = line.replace(timeRegex, '').trim();
 
+            let translation = "";
+            if (showTranslation && text.includes(' | ')) {
+                const parts = text.split(' | ');
+                text = parts[0];
+                translation = parts[1];
+            }
+
             // Automatic wrapping for very long lines
             text = wrapText(text, 40);
+            if (translation) translation = wrapText(translation, 45);
 
             if (gameMode && text.length > 10) {
                 text = maskWords(text);
+                if (translation) translation = maskWords(translation);
             }
 
-            currentLyrics.push({ time, text, isMasked: text.includes('<span class="masked">') });
+            currentLyrics.push({ 
+                time, 
+                text, 
+                translation,
+                isMasked: text.includes('<span class="masked">') 
+            });
         }
     });
 
@@ -176,7 +192,10 @@ function wrapText(text, maxChars) {
 function renderLyrics() {
     const container = document.getElementById('lyrics-container');
     container.innerHTML = currentLyrics.map((line, i) => `
-        <div class="lyric-line ${line.isMasked ? 'hidden-word' : ''}" id="line-${i}">${line.text}</div>
+        <div class="lyric-line ${line.isMasked ? 'hidden-word' : ''}" id="line-${i}">
+            <div class="original-line">${line.text}</div>
+            ${line.translation ? `<div class="translation-line">${line.translation}</div>` : ''}
+        </div>
     `).join('');
 }
 

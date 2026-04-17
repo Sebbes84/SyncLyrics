@@ -17,7 +17,9 @@ RUN \
         websockets \
         aiohttp \
         requests \
-        syncedlyrics
+        syncedlyrics \
+        deep-translator \
+        langdetect
 
 # Copy data for add-on
 COPY . /app

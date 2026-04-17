@@ -36,6 +36,8 @@ options:
   cinema_screen_width: 80
   cinema_screen_height: 60
   cinema_screen_opacity: 70
+  translate_lyrics: false
+  target_language: "fr"
 schema:
   spotify_entity: str
   cache_size_mb: int
@@ -51,3 +53,5 @@ schema:
   cinema_screen_width: int
   cinema_screen_height: int
   cinema_screen_opacity: int
+  translate_lyrics: bool
+  target_language: str

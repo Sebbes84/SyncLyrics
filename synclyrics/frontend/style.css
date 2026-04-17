@@ -178,9 +178,21 @@ header h2 {
     word-break: break-word;
 }
 
+.translation-line {
+    font-size: 1.2rem;
+    font-weight: 400;
+    font-style: italic;
+    opacity: 0.7;
+    margin-top: 8px;
+    display: block;
+}
+
 @media (max-width: 600px) {
     .lyric-line {
         font-size: 1.4rem;
+    }
+    .translation-line {
+        font-size: 1rem;
     }
 }
 

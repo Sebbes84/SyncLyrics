@@ -37,5 +37,3 @@ Pour afficher les paroles dans votre interface Lovelace :
 ## 📄 Licence
 
 Ce projet est sous licence MIT.
-
-
